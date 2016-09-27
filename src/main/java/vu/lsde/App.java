@@ -10,7 +10,7 @@ import org.apache.spark.api.java.function.Function;
  */
 public class App {
     public static void main(String[] args) {
-        String logFile = "hdfs://test.txt"; // Should be some file on your system
+        String logFile = "hdfs://hathi-surfsara/user/lsde09/test.text"; // Should be some file on your system
         SparkConf conf = new SparkConf()
                 .setAppName("Simple Application")
                 .setMaster("local[*]");
