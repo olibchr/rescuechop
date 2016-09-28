@@ -22,11 +22,11 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="true" />
-        <module name="LSDE Assignment 2" />
+        <module name="rescuechop" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="LSDE Assignment 2" target="1.5" />
+      <module name="rescuechop" target="1.5" />
     </bytecodeTargetLevel>
   </component>
 </project>
