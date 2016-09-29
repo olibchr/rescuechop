@@ -30,9 +30,16 @@ public class Sampler {
         JavaRDD<GenericRecord> records = SparkAvroReader.loadJavaRDD(sc, inputPath, Config.OPEN_SKY_SCHEMA);
 
         // Map to model
-        final JavaRDD<SensorDatum> sensorData = records.map(new Function<GenericRecord, SensorDatum>() {
+        JavaRDD<SensorDatum> sensorData = records.map(new Function<GenericRecord, SensorDatum>() {
             public SensorDatum call(GenericRecord genericRecord) throws Exception {
                 return SensorDatum.fromGenericRecord(genericRecord);
+            }
+        });
+
+        // Filter out invalid messages
+        sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
+            public Boolean call(SensorDatum sensorDatum) throws Exception {
+                return sensorDatum.isValidMessage();
             }
         });
 

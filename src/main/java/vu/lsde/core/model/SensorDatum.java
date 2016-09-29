@@ -29,7 +29,7 @@ public class SensorDatum implements Serializable {
 
     public SensorDatum(String type, Double lat, Double lon, Double alt, double timeServer, Double timeSensor,
                        Double timestamp, String rawMessage, int serialNumber, Double rssiPacket, Double rssiPreamble,
-                       Double snr, Double confidence) throws UnspecifiedFormatError, BadFormatException {
+                       Double snr, Double confidence) {
         if (type == null) throw new NullPointerException("sensorType may not be null");
         if (rawMessage == null) throw new NullPointerException("rawMessage may not be null");
 
@@ -46,8 +46,21 @@ public class SensorDatum implements Serializable {
         this.RSSIPreamble = rssiPreamble;
         this.SNR = snr;
         this.confidence = confidence;
-        this.decodedMessage = Decoder.genericDecoder(rawMessage);
-        this.icao = tools.toHexString(this.decodedMessage.getIcao24());
+
+        ModeSReply decodedMessage;
+        try {
+            decodedMessage = Decoder.genericDecoder(rawMessage);
+        } catch (BadFormatException e) {
+            decodedMessage = null;
+        } catch (UnspecifiedFormatError e) {
+            decodedMessage = null;
+        }
+        this.decodedMessage = decodedMessage;
+        this.icao = decodedMessage != null ? tools.toHexString(decodedMessage.getIcao24()) : null;
+    }
+
+    public boolean isValidMessage() {
+        return this.decodedMessage != null;
     }
 
     public String toCSV() {
@@ -70,7 +83,7 @@ public class SensorDatum implements Serializable {
 
     // STATIC
 
-    public static SensorDatum fromGenericRecord(GenericRecord record) throws UnspecifiedFormatError, BadFormatException {
+    public static SensorDatum fromGenericRecord(GenericRecord record) {
         return new SensorDatum(
                 (String) record.get("sensorType"),
                 (Double) record.get("sensorLatitude"),
