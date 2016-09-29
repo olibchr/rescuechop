@@ -20,8 +20,6 @@ import java.io.IOException;
 public class Sampler {
 
     public static void main(String[] args) throws IOException {
-        if (args.length == 0) throw new IllegalArgumentException("Expected an output argument");
-
         String inputPath = Config.OPEN_SKY_DATA_PATH;
         String outputPath = Config.OPEN_SKY_SAMPLE_DATA_PATH;
 
