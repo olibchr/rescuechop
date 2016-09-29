@@ -10,6 +10,11 @@
   <name>rescuechop</name>
   <url>http://maven.apache.org</url>
 
+  <properties>
+    <java.version>7</java.version>
+    <hadoop.version>2.6.0</hadoop.version>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
@@ -22,33 +27,36 @@
       <artifactId>spark-core_2.10</artifactId>
       <version>1.6.1</version>
     </dependency>
+    <dependency>
+      <groupId>org.opensky-network</groupId>
+      <artifactId>libadsb</artifactId>
+      <version>2.0</version>
+    </dependency>
   </dependencies>
 
   <build>
     <plugins>
-      <!--<plugin>-->
-        <!--<groupId>org.apache.maven.plugins</groupId>-->
-        <!--<artifactId>maven-shade-plugin</artifactId>-->
-        <!--<version>2.4.3</version>-->
-        <!--<configuration>-->
-          <!--&lt;!&ndash; put your configurations here &ndash;&gt;-->
-        <!--</configuration>-->
-        <!--<executions>-->
-          <!--<execution>-->
-            <!--<phase>package</phase>-->
-            <!--<goals>-->
-              <!--<goal>shade</goal>-->
-            <!--</goals>-->
-            <!--<configuration>-->
-              <!--<artifactSet>-->
-                <!--<excludes>-->
-                  <!--<exclude>org.apache.spark:spark-core_2.10</exclude>-->
-                <!--</excludes>-->
-              <!--</artifactSet>-->
-            <!--</configuration>-->
-          <!--</execution>-->
-        <!--</executions>-->
-      <!--</plugin>-->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.4.3</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <artifactSet>
+                <includes>
+                  <include>org.opensky-network:*</include>
+                </includes>
+              </artifactSet>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
+
 </project>
