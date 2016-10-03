@@ -14,19 +14,19 @@ import java.io.Serializable;
  * Immutable object representing one datum from a Mode S sensor.
  */
 public class SensorDatum implements Serializable {
-    public final String sensorType;
-    public final Double sensorLatitude;
-    public final Double sensorLongitude;
-    public final Double sensorAltitude;
+//    public final String sensorType;
+//    public final Double sensorLatitude;
+//    public final Double sensorLongitude;
+//    public final Double sensorAltitude;
     public final double timeAtServer;
-    public final Double timeAtSensor;
-    public final Double timestamp;
+    public final double timeAtSensor;
+    public final double timestamp;
     public final String rawMessage;
     public final int sensorSerialNumber;
-    public final Double RSSIPacket;
-    public final Double RSSIPreamble;
-    public final Double SNR;
-    public final Double confidence;
+//    public final Double RSSIPacket;
+//    public final Double RSSIPreamble;
+//    public final Double SNR;
+//    public final Double confidence;
     public final ModeSReply decodedMessage;
     public final String icao;
 
@@ -36,19 +36,19 @@ public class SensorDatum implements Serializable {
         if (type == null) throw new NullPointerException("sensorType may not be null");
         if (rawMessage == null) throw new NullPointerException("rawMessage may not be null");
 
-        this.sensorType = type;
-        this.sensorLatitude = lat;
-        this.sensorLongitude = lon;
-        this.sensorAltitude = alt;
+//        this.sensorType = type;
+//        this.sensorLatitude = lat;
+//        this.sensorLongitude = lon;
+//        this.sensorAltitude = alt;
         this.timeAtServer = timeServer;
-        this.timeAtSensor = timeSensor;
-        this.timestamp = timestamp;
+        this.timeAtSensor = timeSensor == null ? -1 : timeSensor;
+        this.timestamp = timestamp == null ? -1 : timestamp;
         this.rawMessage = rawMessage;
         this.sensorSerialNumber = serialNumber;
-        this.RSSIPacket = rssiPacket;
-        this.RSSIPreamble = rssiPreamble;
-        this.SNR = snr;
-        this.confidence = confidence;
+//        this.RSSIPacket = rssiPacket;
+//        this.RSSIPreamble = rssiPreamble;
+//        this.SNR = snr;
+//        this.confidence = confidence;
 
         ModeSReply decodedMessage;
         try {
@@ -68,19 +68,19 @@ public class SensorDatum implements Serializable {
 
     public String toCSV() {
         return new CsvStringBuilder()
-                .addValue(this.sensorType)
-                .addValue(this.sensorLatitude)
-                .addValue(this.sensorLongitude)
-                .addValue(this.sensorAltitude)
+//                .addValue(this.sensorType)
+//                .addValue(this.sensorLatitude)
+//                .addValue(this.sensorLongitude)
+//                .addValue(this.sensorAltitude)
                 .addValue(this.timeAtServer)
                 .addValue(this.timeAtSensor)
                 .addValue(this.timestamp)
                 .addValue(this.rawMessage)
                 .addValue(this.sensorSerialNumber)
-                .addValue(this.RSSIPacket)
-                .addValue(this.RSSIPreamble)
-                .addValue(this.SNR)
-                .addValue(this.confidence)
+//                .addValue(this.RSSIPacket)
+//                .addValue(this.RSSIPreamble)
+//                .addValue(this.SNR)
+//                .addValue(this.confidence)
                 .toString();
     }
 
