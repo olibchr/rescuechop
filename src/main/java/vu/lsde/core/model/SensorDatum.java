@@ -10,6 +10,9 @@ import vu.lsde.core.io.CsvStringBuilder;
 
 import java.io.Serializable;
 
+/**
+ * Immutable object representing one datum from a Mode S sensor.
+ */
 public class SensorDatum implements Serializable {
     public final String sensorType;
     public final Double sensorLatitude;
@@ -83,6 +86,13 @@ public class SensorDatum implements Serializable {
 
     // STATIC
 
+    /**
+     * Creates a SensorDatum object given a GenericRecord with the schema defined at
+     * <a href="https://github.com/openskynetwork/osky-sample">github.com/openskynetwork/osky-sample</a>.
+     *
+     * @param record
+     * @return
+     */
     public static SensorDatum fromGenericRecord(GenericRecord record) {
         return new SensorDatum(
                 (String) record.get("sensorType"),

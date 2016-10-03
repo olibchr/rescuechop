@@ -20,8 +20,9 @@ import java.io.IOException;
 public class Sampler {
 
     public static void main(String[] args) throws IOException {
-        String inputPath = Config.OPEN_SKY_DATA_PATH;
-        String outputPath = Config.OPEN_SKY_SAMPLE_DATA_PATH;
+        String inputPath = Config.OPEN_SKY_DATA_PATH + "raw2015092100.avro";
+//        String outputPath = Config.OPEN_SKY_SAMPLE_DATA_PATH;
+        String outputPath = args[0];
 
         SparkConf sparkConf = new SparkConf().setAppName("LSDE09 Sampler");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
@@ -44,33 +45,33 @@ public class Sampler {
         });
 
         // Group models by icao
-        JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData.mapToPair(new PairFunction<SensorDatum, String, SensorDatum>() {
-            public Tuple2<String, SensorDatum> call(SensorDatum sensorDatum) throws Exception {
-                return new Tuple2<String, SensorDatum>(sensorDatum.icao, sensorDatum);
-            }
-        }).groupByKey().cache();
-
-        // Find aircraft flying lower than 3km
-        JavaPairRDD<String, Iterable<SensorDatum>> possibleHelicopters = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
-            public Boolean call(Tuple2<String, Iterable<SensorDatum>> tuple) throws Exception {
-                for (SensorDatum sd: tuple._2) {
-                    if (sd.decodedMessage instanceof AltitudeReply) {
-                        if (((AltitudeReply) sd.decodedMessage).getAltitude() > 3000) {
-                            return false;
-                        }
-                    } else if (sd.decodedMessage instanceof AirbornePositionMsg) {
-                        AirbornePositionMsg msg = (AirbornePositionMsg) sd.decodedMessage;
-                        if (msg.hasAltitude() && msg.getAltitude() > 3000) {
-                            return false;
-                        }
-                    }
-                }
-                return true;
+        JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData.groupBy(new Function<SensorDatum, String>() {
+            public String call(SensorDatum sensorDatum) {
+                return sensorDatum.icao;
             }
         });
 
+//        // Find aircraft flying lower than 3km
+//        JavaPairRDD<String, Iterable<SensorDatum>> possibleHelicopters = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
+//            public Boolean call(Tuple2<String, Iterable<SensorDatum>> tuple) throws Exception {
+//                for (SensorDatum sd: tuple._2) {
+//                    if (sd.decodedMessage instanceof AltitudeReply) {
+//                        if (((AltitudeReply) sd.decodedMessage).getAltitude() > 3000) {
+//                            return false;
+//                        }
+//                    } else if (sd.decodedMessage instanceof AirbornePositionMsg) {
+//                        AirbornePositionMsg msg = (AirbornePositionMsg) sd.decodedMessage;
+//                        if (msg.hasAltitude() && msg.getAltitude() > 3000) {
+//                            return false;
+//                        }
+//                    }
+//                }
+//                return true;
+//            }
+//        });
+
         // Flatten
-        JavaRDD<SensorDatum> sample = possibleHelicopters.values().flatMap(new FlatMapFunction<Iterable<SensorDatum>, SensorDatum>() {
+        JavaRDD<SensorDatum> sample = sensorDataByAircraft.values().flatMap(new FlatMapFunction<Iterable<SensorDatum>, SensorDatum>() {
             public Iterable<SensorDatum> call(Iterable<SensorDatum> sensorData) throws Exception {
                 return sensorData;
             }
