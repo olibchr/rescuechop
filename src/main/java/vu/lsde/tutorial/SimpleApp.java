@@ -1,5 +1,8 @@
 package vu.lsde.tutorial;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.apache.spark.api.java.*;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.function.FlatMapFunction;
@@ -15,6 +18,11 @@ import java.util.Arrays;
  */
 public class SimpleApp {
     public static void main(String[] args) {
+        Logger log = LogManager.getRootLogger();
+        log.setLevel(Level.INFO);
+
+        log.info("test log 1");
+
         String path = "hdfs://hathi-surfsara/user/lsde09/test.text"; // Should be some file on your system
         SparkConf conf = new SparkConf()
                 .setAppName("Simple Application");
@@ -39,6 +47,8 @@ public class SimpleApp {
                 return a + b;
             }
         });
+
+        log.warn("test log 2");
 
         counts.saveAsTextFile("hdfs://hathi-surfsara/user/lsde09/test-output");
     }
