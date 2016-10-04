@@ -2,6 +2,7 @@ package vu.lsde.core.model;
 
 import org.apache.avro.generic.GenericRecord;
 import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.opensky.libadsb.Decoder;
 import org.opensky.libadsb.exceptions.BadFormatException;
 import org.opensky.libadsb.exceptions.UnspecifiedFormatError;
@@ -15,6 +16,8 @@ import java.io.Serializable;
  * Immutable object representing one datum from a Mode S sensor.
  */
 public class SensorDatum implements Serializable {
+    private static final Logger LOG = LogManager.getLogger(SensorDatum.class);
+
     public final double timeAtServer;
     public final double timeAtSensor;
     public final double timestamp;
@@ -41,6 +44,7 @@ public class SensorDatum implements Serializable {
             decodedMessage = null;
         } catch (ArrayIndexOutOfBoundsException e) {
             // Somehow this happens. I don't know why, but it happens. Log it and go on with life.
+            LOG.warn("could not decode raw message due to ArrayIndexOutOfBoundsException", e);
             decodedMessage = null;
         }
         this.decodedMessage = decodedMessage;
@@ -78,5 +82,26 @@ public class SensorDatum implements Serializable {
                 (String) record.get("rawMessage"),
                 (Integer) record.get("sensorSerialNumber")
         );
+    }
+
+    /**
+     * Creates a SensorDatum object given a CSV line. It should consist of five columns containing timeAtServer,
+     * timeAtSensor, timestamp, rawMessage and sensorSerialNumber, in that order.
+     *
+     * @param csv
+     * @return
+     */
+    public static SensorDatum fromCSV(String csv) {
+        String tokens[] = csv.split(",");
+
+        if (tokens.length < 5) throw new IllegalArgumentException("CSV line should consist of 5 columns");
+
+        double timeAtServer = tokens[0].length() == 0 ? -1 : Double.parseDouble(tokens[0]);
+        double timeAtSensor = tokens[1].length() == 0 ? -1 : Double.parseDouble(tokens[1]);
+        double timestamp = tokens[2].length() == 0 ? -1 : Double.parseDouble(tokens[2]);
+        String rawMessage = tokens[3];
+        int sensorSerialNumber = tokens[4].length() == 0 ? -1 : Integer.parseInt(tokens[4]);
+
+        return new SensorDatum(timeAtServer, timeAtSensor, timestamp, rawMessage, sensorSerialNumber);
     }
 }
