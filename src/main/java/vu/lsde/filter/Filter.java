@@ -19,16 +19,11 @@ import java.io.IOException;
  * Created by oliverbecher on 10/3/16.
  */
 
-SString type, Double lat, Double lon, Double alt, double timeServer, Double timeSensor,
-        Double timestamp, String rawMessage, int serialNumber, Double rssiPacket, Double rssiPreamble,
-        Double snr, Double confidence
-
 
 public class Filter {
     public static void main(String[] args) throws IOException {
 
         String inputPath = "testSamplerOut3Part3.csv";
-//        String outputPath = Config.OPEN_SKY_SAMPLE_DATA_PATH;
         String outputPath = args[0];
 
         SparkConf sparkConf = new SparkConf().setAppName("LSDE09 Filter");
@@ -39,7 +34,7 @@ public class Filter {
         JavaRDD<SensorDatum> rdd_records = sc.textFile(csvData).map(new Function <String, SensorDatum>(){
             public SensorDatum call(String line) throws Exception{
                 String[] fields = line.split(",");
-                SensorDatum sd = new SensorDatum(String(null), Double(null), Double(null), Double(null), double.fields[0], double(fields[1]), double(fields[2]), String(fields[3]), int(fields[4]);
+                SensorDatum sd = new SensorDatum(String(null), Double(null), Double(null), Double(null), double(fields[0]), double(fields[1]), double(fields[2]), String(fields[3]), int(fields[4]);
 
                 return sd;
             }});
