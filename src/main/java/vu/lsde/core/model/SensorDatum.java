@@ -1,6 +1,7 @@
 package vu.lsde.core.model;
 
 import org.apache.avro.generic.GenericRecord;
+import org.apache.log4j.LogManager;
 import org.opensky.libadsb.Decoder;
 import org.opensky.libadsb.exceptions.BadFormatException;
 import org.opensky.libadsb.exceptions.UnspecifiedFormatError;
