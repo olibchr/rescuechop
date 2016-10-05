@@ -100,15 +100,15 @@ public class AircraftPositions {
         });
 
         // To CSV
-        final Joiner joiner = Joiner.on(",").useForNull("");
         JavaRDD<String> positionsCSV = positions.map(new Function<Tuple2<String, Position>, String>() {
             public String call(Tuple2<String, Position> tuple) throws Exception {
                 Position p = tuple._2;
-                return joiner.join(tuple._1, p.getLatitude(), p.getLongitude(), p.getAltitude());
+                return String.format("%s,%f,%f,%s", tuple._1, p.getLatitude(), p.getLongitude(), p.getAltitude() == null ? "" : p.getAltitude());
+                // return Joiner.on(",").useForNull("").join(tuple._1, p.getLatitude(), p.getLongitude(), p.getAltitude());
             }
         });
 
         // To file
-        records.saveAsTextFile(outputPath);
+        positionsCSV.saveAsTextFile(outputPath);
     }
 }
