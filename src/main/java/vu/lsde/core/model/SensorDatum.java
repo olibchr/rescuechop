@@ -106,17 +106,5 @@ public class SensorDatum implements Serializable {
         int sensorSerialNumber = tokens.length < 4 || tokens[4].trim().length() == 0 ? -1 : Integer.parseInt(tokens[4]);
 
         return new SensorDatum(timeAtServer, timeAtSensor, timestamp, rawMessage, sensorSerialNumber);
-
-//        List<String> tokens = SPLITTER.splitToList(csv);
-//
-//        if (tokens.size() < 5) throw new IllegalArgumentException("CSV line should consist of 5 columns");
-//
-//        double timeAtServer = tokens.get(0).length() == 0 ? -1 : Double.parseDouble(tokens.get(0));
-//        double timeAtSensor = tokens.get(1).length() == 0 ? -1 : Double.parseDouble(tokens.get(1));
-//        double timestamp = tokens.get(2).length() == 0 ? -1 : Double.parseDouble(tokens.get(2));
-//        String rawMessage = tokens.get(3);
-//        int sensorSerialNumber = tokens.get(4).length() == 0 ? -1 : Integer.parseInt(tokens.get(4));
-//
-//        return new SensorDatum(timeAtServer, timeAtSensor, timestamp, rawMessage, sensorSerialNumber);
     }
 }
