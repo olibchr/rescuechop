@@ -27,7 +27,7 @@ public class Sampler {
         Logger log = LogManager.getLogger(Sampler.class);
         log.setLevel(Level.INFO);
 
-        String inputPath = Config.OPEN_SKY_DATA_PATH + "raw2015092100.avro";
+        String inputPath = Config.OPEN_SKY_DATA_PATH;
 //        String outputPath = Config.OPEN_SKY_SAMPLE_DATA_PATH;
         String outputPath = args[0];
 
