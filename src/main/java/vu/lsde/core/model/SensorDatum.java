@@ -1,5 +1,7 @@
 package vu.lsde.core.model;
 
+import com.google.common.base.Joiner;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -8,15 +10,17 @@ import org.opensky.libadsb.exceptions.BadFormatException;
 import org.opensky.libadsb.exceptions.UnspecifiedFormatError;
 import org.opensky.libadsb.msgs.ModeSReply;
 import org.opensky.libadsb.tools;
-import vu.lsde.core.io.CsvStringBuilder;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * Immutable object representing one datum from a Mode S sensor.
  */
 public class SensorDatum implements Serializable {
     private static final Logger LOG = LogManager.getLogger(SensorDatum.class);
+    private static final Joiner JOINER = Joiner.on(",").useForNull("");
+//    private static final Splitter SPLITTER = Splitter.on(",");
 
     public final double timeAtServer;
     public final double timeAtSensor;
@@ -56,13 +60,12 @@ public class SensorDatum implements Serializable {
     }
 
     public String toCSV() {
-        return new CsvStringBuilder()
-                .addValue(this.timeAtServer)
-                .addValue(this.timeAtSensor)
-                .addValue(this.timestamp)
-                .addValue(this.rawMessage)
-                .addValue(this.sensorSerialNumber)
-                .toString();
+        return JOINER.join(
+                this.timeAtServer,
+                this.timeAtSensor,
+                this.timestamp,
+                this.rawMessage,
+                this.sensorSerialNumber);
     }
 
     // STATIC
@@ -92,16 +95,28 @@ public class SensorDatum implements Serializable {
      * @return
      */
     public static SensorDatum fromCSV(String csv) {
-        String tokens[] = csv.split(",");
+        String[] tokens = csv.split(",");
 
-        if (tokens.length < 5) throw new IllegalArgumentException("CSV line should consist of 5 columns");
+        if (tokens.length < 4) throw new IllegalArgumentException(("CSV line for SensorDatum should consist of 5 columns"));
 
-        double timeAtServer = tokens[0].length() == 0 ? -1 : Double.parseDouble(tokens[0]);
-        double timeAtSensor = tokens[1].length() == 0 ? -1 : Double.parseDouble(tokens[1]);
-        double timestamp = tokens[2].length() == 0 ? -1 : Double.parseDouble(tokens[2]);
+        double timeAtServer = tokens[0].trim().length() == 0 ? -1 : Double.parseDouble(tokens[0]);
+        double timeAtSensor = tokens[1].trim().length() == 0 ? -1 : Double.parseDouble(tokens[1]);
+        double timestamp = tokens[2].trim().length() == 0 ? -1 : Double.parseDouble(tokens[2]);
         String rawMessage = tokens[3];
-        int sensorSerialNumber = tokens[4].length() == 0 ? -1 : Integer.parseInt(tokens[4]);
+        int sensorSerialNumber = tokens.length < 4 || tokens[4].trim().length() == 0 ? -1 : Integer.parseInt(tokens[4]);
 
         return new SensorDatum(timeAtServer, timeAtSensor, timestamp, rawMessage, sensorSerialNumber);
+
+//        List<String> tokens = SPLITTER.splitToList(csv);
+//
+//        if (tokens.size() < 5) throw new IllegalArgumentException("CSV line should consist of 5 columns");
+//
+//        double timeAtServer = tokens.get(0).length() == 0 ? -1 : Double.parseDouble(tokens.get(0));
+//        double timeAtSensor = tokens.get(1).length() == 0 ? -1 : Double.parseDouble(tokens.get(1));
+//        double timestamp = tokens.get(2).length() == 0 ? -1 : Double.parseDouble(tokens.get(2));
+//        String rawMessage = tokens.get(3);
+//        int sensorSerialNumber = tokens.get(4).length() == 0 ? -1 : Integer.parseInt(tokens.get(4));
+//
+//        return new SensorDatum(timeAtServer, timeAtSensor, timestamp, rawMessage, sensorSerialNumber);
     }
 }

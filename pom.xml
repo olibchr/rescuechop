@@ -32,6 +32,11 @@
       <artifactId>libadsb</artifactId>
       <version>2.0</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>19.0</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -50,6 +55,7 @@
               <artifactSet>
                 <includes>
                   <include>org.opensky-network:*</include>
+                  <include>com.google.guava:*</include>
                 </includes>
               </artifactSet>
             </configuration>

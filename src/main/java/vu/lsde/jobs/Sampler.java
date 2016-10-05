@@ -1,4 +1,4 @@
-package vu.lsde.sampler;
+package vu.lsde.jobs;
 
 import org.apache.avro.generic.GenericRecord;
 import org.apache.log4j.Level;
@@ -10,8 +10,6 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.Function2;
-import org.apache.spark.api.java.function.PairFunction;
 import org.opensky.libadsb.msgs.AirbornePositionMsg;
 import org.opensky.libadsb.msgs.AirspeedHeadingMsg;
 import org.opensky.libadsb.msgs.AltitudeReply;
@@ -29,19 +27,15 @@ public class Sampler {
         Logger log = LogManager.getLogger(Sampler.class);
         log.setLevel(Level.INFO);
 
-        String inputPath = Config.OPEN_SKY_DATA_PATH; // + "raw2015092100.avro";
+        String inputPath = Config.OPEN_SKY_DATA_PATH + "raw2015092100.avro";
 //        String outputPath = Config.OPEN_SKY_SAMPLE_DATA_PATH;
         String outputPath = args[0];
 
         SparkConf sparkConf = new SparkConf().setAppName("LSDE09 Sampler");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
-        log.info("loading AVRO to RDD");
-
         // Load records
         JavaRDD<GenericRecord> records = SparkAvroReader.loadJavaRDD(sc, inputPath, Config.OPEN_SKY_SCHEMA);
-
-        log.info("mapping GenericRecord objects to SensorDatum objects");
 
         // Map to model
         JavaRDD<SensorDatum> sensorData = records.map(new Function<GenericRecord, SensorDatum>() {
@@ -50,8 +44,6 @@ public class Sampler {
             }
         });
 
-        log.info("filtering out invalid SensorDatum objects");
-
         // Filter out invalid messages
         sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
             public Boolean call(SensorDatum sensorDatum) throws Exception {
@@ -59,16 +51,12 @@ public class Sampler {
             }
         });
 
-        log.info("grouping SensorDatum objects by icao");
-
         // Group models by icao
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData.groupBy(new Function<SensorDatum, String>() {
             public String call(SensorDatum sensorDatum) {
                 return sensorDatum.icao;
             }
         });
-
-        log.info("filtering out aircraft flying above 3km");
 
         // Find aircraft flying lower than 3km
         JavaPairRDD<String, Iterable<SensorDatum>> possibleHelicopters = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
@@ -99,8 +87,6 @@ public class Sampler {
             }
         });
 
-        log.info("flattening SensorDatum objects");
-
         // Flatten
         JavaRDD<SensorDatum> sample = possibleHelicopters.values().flatMap(new FlatMapFunction<Iterable<SensorDatum>, SensorDatum>() {
             public Iterable<SensorDatum> call(Iterable<SensorDatum> sensorData) throws Exception {
@@ -108,16 +94,12 @@ public class Sampler {
             }
         });
 
-        log.info("mapping SensorDatum objects to CSV lines");
-
         // To CSV
         JavaRDD<String> sampleCSV = sample.map(new Function<SensorDatum, String>() {
             public String call(SensorDatum sensorDatum) throws Exception {
                 return sensorDatum.toCSV();
             }
         });
-
-        log.info("saving CSV lines as text file");
 
         sampleCSV.saveAsTextFile(outputPath);
     }

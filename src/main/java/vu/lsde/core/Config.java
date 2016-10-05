@@ -7,7 +7,7 @@ public class Config {
     /**
      * The base HDFS url for the cluster.
      */
-    private static final String HDFS_BASE_PATH = "hdfs://hathi-surfsara/";
+    public static final String HDFS_BASE_PATH = "hdfs://hathi-surfsara/";
 
     /**
      * The path to the open sky dataset.

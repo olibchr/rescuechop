@@ -21,6 +21,7 @@
               <artifactSet>
                 <includes>
                   <include>org.opensky-network:*</include>
+                  <include>com.google.guava:*</include>
                 </includes>
               </artifactSet>
             </configuration>
