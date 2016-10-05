@@ -6,6 +6,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.opensky.libadsb.Decoder;
+import org.opensky.libadsb.Position;
 import org.opensky.libadsb.exceptions.BadFormatException;
 import org.opensky.libadsb.exceptions.UnspecifiedFormatError;
 import org.opensky.libadsb.msgs.ModeSReply;
@@ -20,17 +21,18 @@ import java.util.List;
 public class SensorDatum implements Serializable {
     private static final Logger LOG = LogManager.getLogger(SensorDatum.class);
     private static final Joiner JOINER = Joiner.on(",").useForNull("");
-//    private static final Splitter SPLITTER = Splitter.on(",");
 
     public final double timeAtServer;
     public final double timeAtSensor;
     public final double timestamp;
     public final String rawMessage;
     public final int sensorSerialNumber;
+
     public final ModeSReply decodedMessage;
     public final String icao;
 
     public SensorDatum(double timeServer, Double timeSensor, Double timestamp, String rawMessage, int serialNumber) {
+
         if (rawMessage == null) throw new NullPointerException("rawMessage may not be null");
 
         this.timeAtServer = timeServer;
