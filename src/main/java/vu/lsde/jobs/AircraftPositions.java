@@ -1,6 +1,6 @@
 package vu.lsde.jobs;
 
-import org.apache.avro.generic.GenericRecord;
+import com.clearspring.analytics.util.Lists;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -10,27 +10,24 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
-import org.opensky.libadsb.msgs.AirbornePositionMsg;
-import org.opensky.libadsb.msgs.AirspeedHeadingMsg;
-import org.opensky.libadsb.msgs.AltitudeReply;
-import org.opensky.libadsb.msgs.VelocityOverGroundMsg;
+import org.opensky.libadsb.Position;
 import scala.Tuple2;
-import vu.lsde.core.Config;
-import vu.lsde.core.io.SparkAvroReader;
 import vu.lsde.core.model.SensorDatum;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-public class ReaderWriter {
+public class AircraftPositions {
 
     public static void main(String[] args) throws IOException {
-        Logger log = LogManager.getLogger(ReaderWriter.class);
+        Logger log = LogManager.getLogger(AircraftPositions.class);
         log.setLevel(Level.INFO);
 
         String inputPath = args[0];
         String outputPath = args[1];
 
-        SparkConf sparkConf = new SparkConf().setAppName("LSDE09 ReaderWriter");
+        SparkConf sparkConf = new SparkConf().setAppName("LSDE09 AircraftPositions");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Load CSV
@@ -43,12 +40,21 @@ public class ReaderWriter {
             }
         });
 
-        // Write to CSV again
-        records = sensorData.map(new Function<SensorDatum, String>() {
-            public String call(SensorDatum sensorDatum) throws Exception {
-                return sensorDatum.toCSV();
+        // Group models by icao
+        JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData.groupBy(new Function<SensorDatum, String>() {
+            public String call(SensorDatum sensorDatum) {
+                return sensorDatum.icao;
             }
         });
+
+        // Map messages to positions
+        JavaPairRDD<String, Iterable<Position>> positionsByAircraft = sensorDataByAircraft.flatMapValues(new Function<Iterable<SensorDatum>, Iterable<Iterable<Position>>>() {
+            public Iterable<Iterable<Position>> call(Iterable<SensorDatum> sensorData) throws Exception {
+                List<SensorDatum> sensorDataList = Lists.newArrayList(sensorData);
+            }
+        });
+
+
 
         // To file
         records.saveAsTextFile(outputPath);
