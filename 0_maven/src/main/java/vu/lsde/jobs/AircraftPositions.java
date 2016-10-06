@@ -16,6 +16,7 @@ import org.apache.spark.api.java.function.PairFunction;
 import org.opensky.libadsb.Position;
 import org.opensky.libadsb.PositionDecoder;
 import org.opensky.libadsb.msgs.AirbornePositionMsg;
+import org.opensky.libadsb.msgs.AltitudeReply;
 import org.opensky.libadsb.msgs.ModeSReply;
 import org.opensky.libadsb.msgs.SurfacePositionMsg;
 import scala.Tuple2;
@@ -51,10 +52,12 @@ public class AircraftPositions {
             }
         });
 
-        // Filter position messages
+        // Filter position and altitude messages
         sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
             public Boolean call(SensorDatum sd) {
-                return sd.getDecodedMessage() instanceof AirbornePositionMsg || sd.getDecodedMessage() instanceof SurfacePositionMsg;
+                return sd.getDecodedMessage() instanceof AirbornePositionMsg
+                        || sd.getDecodedMessage() instanceof SurfacePositionMsg;
+//                        || sd.getDecodedMessage() instanceof AltitudeReply;
             }
         });
 
@@ -84,16 +87,33 @@ public class AircraftPositions {
                 // Decode positions
                 PositionDecoder decoder = new PositionDecoder();
                 List<AircraftPosition> positions = new ArrayList<AircraftPosition>();
+//                double lastAltitude = Double.MIN_VALUE;
+//                double lastAltitudeTime = Double.MIN_VALUE;
                 for (SensorDatum sd : sensorDataList) {
                     Position position = null;
-                    Position sensorPosition = new Position(sd.getSensorLatitude(), sd.getSensorLongitude(), null);
+                    Position sensorPosition = new Position(sd.getSensorLongitude(), sd.getSensorLatitude(), null);
                     ModeSReply message = sd.getDecodedMessage();
                     if (message instanceof AirbornePositionMsg) {
                         position = decoder.decodePosition(sd.getTimeAtServer(), sensorPosition, (AirbornePositionMsg) message);
                     } else if (message instanceof SurfacePositionMsg) {
                         position = decoder.decodePosition(sd.getTimeAtServer(), sensorPosition, (SurfacePositionMsg) message);
                     }
+//                    else if (message instanceof AltitudeReply) {
+//                        lastAltitude = ((AltitudeReply) message).getAltitude();
+//                        lastAltitudeTime = sd.getTimeAtServer();
+//                    }
                     if (position != null && position.isReasonable()) {
+//                        if (position.getAltitude() == null && lastAltitude > Double.MIN_VALUE) {
+//                            if (sd.getTimeAtServer() - lastAltitudeTime > 1800) {
+//                                lastAltitude = Double.MIN_VALUE;
+//                            } else {
+//                                lastAltitudeTime = sd.getTimeAtServer();
+//                                position.setAltitude(lastAltitude);
+//                            }
+//                        } else if (position.getAltitude() != null) {
+//                            lastAltitude = position.getAltitude();
+//                            lastAltitudeTime = sd.getTimeAtServer();
+//                        }
                         positions.add(new AircraftPosition(icao, sd.getTimeAtServer(), position));
                     }
                 }
@@ -128,6 +148,5 @@ public class AircraftPositions {
 
         // To file
         positionsCSV.saveAsTextFile(outputPath);
-
     }
 }
