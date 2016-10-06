@@ -86,13 +86,14 @@ public class AircraftPositions {
                 List<AircraftPosition> positions = new ArrayList<AircraftPosition>();
                 for (SensorDatum sd : sensorDataList) {
                     Position position = null;
+                    Position sensorPosition = new Position(sd.getSensorLatitude(), sd.getSensorLongitude(), null);
                     ModeSReply message = sd.getDecodedMessage();
                     if (message instanceof AirbornePositionMsg) {
-                        position = decoder.decodePosition(sd.getTimeAtServer(), (AirbornePositionMsg) message);
+                        position = decoder.decodePosition(sd.getTimeAtServer(), sensorPosition, (AirbornePositionMsg) message);
                     } else if (message instanceof SurfacePositionMsg) {
-                        position = decoder.decodePosition(sd.getTimeAtServer(), (SurfacePositionMsg) message);
+                        position = decoder.decodePosition(sd.getTimeAtServer(), sensorPosition, (SurfacePositionMsg) message);
                     }
-                    if (position != null) {
+                    if (position != null && position.isReasonable()) {
                         positions.add(new AircraftPosition(icao, sd.getTimeAtServer(), position));
                     }
                 }

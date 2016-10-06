@@ -20,7 +20,10 @@ import java.util.List;
  */
 public class SensorDatum extends ModelBase {
     private static final Logger LOG = LogManager.getLogger(SensorDatum.class);
+    private static final double NULL_DOUBLE = Double.MIN_VALUE;
 
+    private final double sensorLatitude;
+    private final double sensorLongitude;
     private final double timeAtServer;
     private final double timeAtSensor;
     private final double timestamp;
@@ -32,13 +35,15 @@ public class SensorDatum extends ModelBase {
 
     // CONSTRUCTOR
 
-    public SensorDatum(double timeServer, Double timeSensor, Double timestamp, String rawMessage, int serialNumber) {
+    public SensorDatum(Double sensorLatitude, Double sensorLongitude, double timeServer, Double timeSensor, Double timestamp, String rawMessage, int serialNumber) {
 
         if (rawMessage == null) throw new NullPointerException("rawMessage may not be null");
 
+        this.sensorLatitude = sensorLatitude == null ? NULL_DOUBLE : sensorLatitude;
+        this.sensorLongitude = sensorLongitude == null ? NULL_DOUBLE : sensorLongitude;
         this.timeAtServer = timeServer;
-        this.timeAtSensor = timeSensor == null ? -1 : timeSensor;
-        this.timestamp = timestamp == null ? -1 : timestamp;
+        this.timeAtSensor = timeSensor == null ? NULL_DOUBLE : timeSensor;
+        this.timestamp = timestamp == null ? NULL_DOUBLE : timestamp;
         this.rawMessage = rawMessage;
         this.sensorSerialNumber = serialNumber;
 
@@ -60,16 +65,24 @@ public class SensorDatum extends ModelBase {
 
     // GETTERS
 
+    public Double getSensorLatitude() {
+        return this.sensorLatitude != NULL_DOUBLE ? this.sensorLatitude : null;
+    }
+
+    public Double getSensorLongitude() {
+        return this.sensorLongitude != NULL_DOUBLE ? this.sensorLongitude : null;
+    }
+
     public double getTimeAtServer() {
         return this.timeAtServer;
     }
 
     public Double getTimeAtSensor() {
-        return this.timeAtSensor >= 0 ? this.timeAtSensor : null;
+        return this.timeAtSensor != NULL_DOUBLE ? this.timeAtSensor : null;
     }
 
     public Double getTimestamp() {
-        return this.timestamp >= 0 ? this.timestamp : null ;
+        return this.timestamp != NULL_DOUBLE ? this.timestamp : null ;
     }
 
     public String getRawMessage() {
@@ -95,7 +108,7 @@ public class SensorDatum extends ModelBase {
     // FUNCTIONS
 
     public String toCSV() {
-        return super.toCSV(getTimeAtServer(), getTimeAtSensor(), getTimestamp(), getRawMessage(), getSensorSerialNumber());
+        return super.toCSV(getSensorLatitude(), getSensorLongitude(), getTimeAtServer(), getTimeAtSensor(), getTimestamp(), getRawMessage(), getSensorSerialNumber());
     }
 
     // STATIC
@@ -109,6 +122,8 @@ public class SensorDatum extends ModelBase {
      */
     public static SensorDatum fromGenericRecord(GenericRecord record) {
         return new SensorDatum(
+                (Double) record.get("sensorLatitude"),
+                (Double) record.get("sensorLongitude"),
                 (Double) record.get("timeAtServer"),
                 (Double) record.get("timeAtSensor"),
                 (Double) record.get("timestamp"),
@@ -127,14 +142,16 @@ public class SensorDatum extends ModelBase {
     public static SensorDatum fromCSV(String csv) {
         String[] tokens = csv.split(",");
 
-        if (tokens.length < 4) throw new IllegalArgumentException(("CSV line for SensorDatum should consist of 5 columns"));
+        if (tokens.length < 6) throw new IllegalArgumentException(("CSV line for SensorDatum should consist of 7 columns"));
 
-        double timeAtServer = tokens[0].trim().length() == 0 ? -1 : Double.parseDouble(tokens[0]);
-        double timeAtSensor = tokens[1].trim().length() == 0 ? -1 : Double.parseDouble(tokens[1]);
-        double timestamp = tokens[2].trim().length() == 0 ? -1 : Double.parseDouble(tokens[2]);
-        String rawMessage = tokens[3];
-        int sensorSerialNumber = tokens.length < 4 || tokens[4].trim().length() == 0 ? -1 : Integer.parseInt(tokens[4]);
+        double sensorLat = tokens[0].trim().length() == 0 ? -1 : Double.parseDouble(tokens[0]);
+        double sensorLon = tokens[1].trim().length() == 0 ? -1 : Double.parseDouble(tokens[1]);
+        double timeAtServer = tokens[2].trim().length() == 0 ? -1 : Double.parseDouble(tokens[2]);
+        double timeAtSensor = tokens[3].trim().length() == 0 ? -1 : Double.parseDouble(tokens[3]);
+        double timestamp = tokens[4].trim().length() == 0 ? -1 : Double.parseDouble(tokens[4]);
+        String rawMessage = tokens[5];
+        int sensorSerialNumber = tokens.length < 6 || tokens[6].trim().length() == 0 ? -1 : Integer.parseInt(tokens[6]);
 
-        return new SensorDatum(timeAtServer, timeAtSensor, timestamp, rawMessage, sensorSerialNumber);
+        return new SensorDatum(sensorLat, sensorLon, timeAtServer, timeAtSensor, timestamp, rawMessage, sensorSerialNumber);
     }
 }
