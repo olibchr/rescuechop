@@ -3,22 +3,64 @@
 # In[ ]:
 
 
-import numpy as np
-import matplotlib
-import pandas as pd
-import hide_code.hide_code as hc
+import matplotlib.cm as cm
+import matplotlib as mpl
+import matplotlib.colors as colors
 import folium
-import xml.etree.ElementTree as ET
-from math import cos, sin, sqrt, atan2
-import math
 import csv
+from branca.element import Figure
 
-def get_data():
+
+width, height = '100%', '100%'
+
+fig = Figure(width=width, height=height)
+
+
+def get_color(altitude):
+    norm = mpl.colors.Normalize(vmin=0, vmax=3000)
+    cmap = cm.nipy_spectral
+    m = cm.ScalarMappable(norm=norm, cmap=cmap)
+    return m.to_rgba(altitude)
+
+
+def get_pad_data():
     my_helipads = []
-    with open('pads_at_hosps.csv', 'rb') as csvfile:
+    with open('../2_data/pads_at_hosps.csv', 'rb') as csvfile:
         datareader = csv.reader(csvfile, delimiter=' ', quotechar='|')
         for row in datareader:
-            my_helipads.append(row)
+            data = row[0].split(',')
+            my_helipads.append(tuple([data[0], data[1]]))
+    return my_helipads
+
+
+def get_travel_data():
+    all_icao = []
+    all_x = []
+    all_y = []
+    all_x_y = []
+    all_alt = []
+    with open('../2_data/aircraft_positions_sample2.csv') as csvfile:
+        datareader = csv.reader(csvfile, delimiter= ' ', quotechar='|')
+        # this_icao = 'foo'
+        # points_per_icao = []
+        for row in datareader:
+            data = row[0].split(',')
+            all_icao.append((data[0]))
+            all_x.append(float(data[1]))
+            all_y.append(float(data[2]))
+            all_x_y.append([float(data[1]), float(data[2])])
+            all_alt.append(float(data[3]))
+            """
+            if str(this_icao) != str(data[0]):
+                this_icao = data[0]
+                points_per_icao.append([data[1], data[2], data[3]])
+                all_flights.append([this_icao, points_per_icao])
+                points_per_icao = []
+            else:
+                this_icao = data[0]
+                points_per_icao.append([data[1], data[2], data[3]])"""
+
+    return all_icao, all_x_y, all_x, all_y, all_alt
 
 
 MAP_INIT = (55, 10)
@@ -27,42 +69,40 @@ MAP_INIT = (55, 10)
 
 MAX_RECORDS = 100
 
+helipad_locs = get_pad_data()
+all_icao, all_x_y, all_x, all_y, all_alt = get_travel_data()
 
-map = folium.Map(location=MAP_INIT, zoom_start=4)
+ave_lat = sum(p[0] for p in all_x_y)/len(all_x_y)
+ave_lon = sum(p[1] for p in all_x_y)/len(all_x_y)
 
-all_helipads_x, all_helipads_y = get_Helipads()
-all_hosp_x, all_hosp_y, all_hosp_name = get_Hospitals()
+map = folium.Map(location=[ave_lat, ave_lon], zoom_start=4)
 
-# pd_pads = pd.DataFrame({all_helipads_x, all_helipads_y})
-# pd_hosps = pd.DataFrame({all_hosp_x, all_hosp_y, all_hosp_name})
-
-pads_at_hosp = []
-for i in range(1,len(all_helipads_x)):
-
-    for j in range(1,len(all_hosp_x)):
-        dist = haversine(all_helipads_x[i], all_helipads_y[i], all_hosp_x[j], all_hosp_y[j])
-        if dist < 0.5:
-            pads_at_hosp.append([all_helipads_x[i], all_helipads_y[i]])
-
-with open("pads_at_hosps.csv"):
-    writer = csv.writer(delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
-    for item in pads_at_hosp:
-        writer.writerow([item[0], item[1]])
+count = 0
 
 """
-for pad in pd_pads[1:MAX_RECORDS]:
+for pad in helipad_locs[1:]:
     folium.Marker(
         location = [pad[0],pad[1]],
-        icon=folium.Icon(color='blue'),
-        popup=pad[2]).add_to(map)
-
-
-
-for hosp in pd_hosps[1:MAX_RECORDS]:
+        icon=folium.Icon(color='blue')
+        ).add_to(map)
+    count += 1"""
+"""
+for flight in flights[:MAX_RECORDS]:
     folium.Marker(
-        location = [hosp[0],hosp[1]],
-        icon=folium.Icon(color='red'),
-        popup=pad[2]).add_to(map)
+        location = [flight[0],flight[1]],
+        icon=folium.Icon(color='red')
+        ).add_to(map)
+"""
+last_plane = all_x_y[0]
+for plane in all_x_y[1:]:
+    this_plane = [last_plane] + [plane]
+    last_plane = plane
+
+    this_color = get_color(all_alt[count])
+    this_color = colors.rgb2hex(this_color)
+    count += 1
+    folium.PolyLine(this_plane, color=this_color, weight=2.5, opacity=1).add_to(map)
 
 map
-"""
+#fig.add_child(map)
+#fig

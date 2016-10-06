@@ -24,7 +24,7 @@ def get_Hospitals():
     all_hosp_x = []
     all_hosp_y = []
     all_hosp_name = []
-    tree = ET.parse('europe_hospitals.osm.xml')
+    tree = ET.parse('../2_data/europe_hospitals.osm.xml')
     root = tree.getroot()
     for child in root:
         lon = child.get('lon')
@@ -47,7 +47,7 @@ def get_Helipads():
 
     all_helipads_x = []
     all_helipads_y = []
-    tree = ET.parse('europe_helipads.osm.xml')
+    tree = ET.parse('../2_data/europe_helipads.osm.xml')
     root = tree.getroot()
     for child in root:
         lon = child.get('lon')
@@ -65,12 +65,12 @@ all_hosp_x, all_hosp_y, all_hosp_name = get_Hospitals()
 # pd_hosps = pd.DataFrame({all_hosp_x, all_hosp_y, all_hosp_name})
 
 pads_at_hosp = []
-for i in range(1,len(all_helipads_x)):
-
-    for j in range(1,len(all_hosp_x)):
-        dist = haversine(float(all_helipads_x[i]), float(all_helipads_y[i]), float(all_hosp_x[j]), float(all_hosp_y[j]))
-        if dist < 0.5:
-            pads_at_hosp.append([all_helipads_x[i], all_helipads_y[i]])
+for i in range(1, len(all_hosp_x)):
+    for j in range(1, len(all_helipads_x)):
+        dist = haversine(float(all_hosp_x[i]), float(all_hosp_x[i]), float(all_helipads_x[j]), float(all_helipads_x[j]))
+        if dist < 1:
+            pads_at_hosp.append([all_helipads_x[j], all_helipads_y[j]])
+            break
 
 with open("pads_at_hosps.csv", 'wb') as csvfile:
     writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
