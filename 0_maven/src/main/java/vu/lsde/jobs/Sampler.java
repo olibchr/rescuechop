@@ -54,7 +54,7 @@ public class Sampler {
         // Group models by icao
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData.groupBy(new Function<SensorDatum, String>() {
             public String call(SensorDatum sensorDatum) {
-                return sensorDatum.icao;
+                return sensorDatum.getIcao();
             }
         });
 
@@ -62,22 +62,22 @@ public class Sampler {
         JavaPairRDD<String, Iterable<SensorDatum>> possibleHelicopters = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
             public Boolean call(Tuple2<String, Iterable<SensorDatum>> tuple) throws Exception {
                 for (SensorDatum sd: tuple._2) {
-                    if (sd.decodedMessage instanceof AltitudeReply) {
-                        if (((AltitudeReply) sd.decodedMessage).getAltitude() > 3000) {
+                    if (sd.getDecodedMessage() instanceof AltitudeReply) {
+                        if (((AltitudeReply) sd.getDecodedMessage()).getAltitude() > 3000) {
                             return false;
                         }
-                    } else if (sd.decodedMessage instanceof AirbornePositionMsg) {
-                        AirbornePositionMsg msg = (AirbornePositionMsg) sd.decodedMessage;
+                    } else if (sd.getDecodedMessage() instanceof AirbornePositionMsg) {
+                        AirbornePositionMsg msg = (AirbornePositionMsg) sd.getDecodedMessage();
                         if (msg.hasAltitude() && msg.getAltitude() > 3000) {
                             return false;
                         }
-                    } else if (sd.decodedMessage instanceof AirspeedHeadingMsg) {
-                        AirspeedHeadingMsg msg = (AirspeedHeadingMsg) sd.decodedMessage;
+                    } else if (sd.getDecodedMessage() instanceof AirspeedHeadingMsg) {
+                        AirspeedHeadingMsg msg = (AirspeedHeadingMsg) sd.getDecodedMessage();
                         if (msg.hasAirspeedInfo() && msg.getAirspeed() > 120) {
                             return false;
                         }
-                    } else if (sd.decodedMessage instanceof VelocityOverGroundMsg) {
-                        VelocityOverGroundMsg msg = (VelocityOverGroundMsg) sd.decodedMessage;
+                    } else if (sd.getDecodedMessage() instanceof VelocityOverGroundMsg) {
+                        VelocityOverGroundMsg msg = (VelocityOverGroundMsg) sd.getDecodedMessage();
                         if (msg.hasVelocityInfo() && msg.getVelocity() > 120) {
                             return false;
                         }

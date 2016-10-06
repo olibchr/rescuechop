@@ -16,9 +16,11 @@ import org.apache.spark.api.java.function.PairFunction;
 import org.opensky.libadsb.Position;
 import org.opensky.libadsb.PositionDecoder;
 import org.opensky.libadsb.msgs.AirbornePositionMsg;
+import org.opensky.libadsb.msgs.ModeSReply;
 import org.opensky.libadsb.msgs.SurfacePositionMsg;
 import scala.Tuple2;
 import vu.lsde.core.Config;
+import vu.lsde.core.model.AircraftPosition;
 import vu.lsde.core.model.SensorDatum;
 
 import java.io.IOException;
@@ -49,66 +51,82 @@ public class AircraftPositions {
             }
         });
 
+        // Filter position messages
+        sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
+            public Boolean call(SensorDatum sd) {
+                return sd.getDecodedMessage() instanceof AirbornePositionMsg || sd.getDecodedMessage() instanceof SurfacePositionMsg;
+            }
+        });
+
         // Group models by icao
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData.groupBy(new Function<SensorDatum, String>() {
             public String call(SensorDatum sensorDatum) {
-                return sensorDatum.icao;
+                return sensorDatum.getIcao();
             }
         });
 
         // Map messages to positions
-        JavaPairRDD<String, Iterable<Position>> positionsByAircraft = sensorDataByAircraft.mapToPair(new PairFunction<Tuple2<String, Iterable<SensorDatum>>, String, Iterable<Position>>() {
-            public Tuple2<String, Iterable<Position>> call(Tuple2<String, Iterable<SensorDatum>> tuple) throws Exception {
+        JavaPairRDD<String, Iterable<AircraftPosition>> positionsByAircraft = sensorDataByAircraft.mapToPair(new PairFunction<Tuple2<String, Iterable<SensorDatum>>, String, Iterable<AircraftPosition>>() {
+            public Tuple2<String, Iterable<AircraftPosition>> call(Tuple2<String, Iterable<SensorDatum>> tuple) {
+                String icao = tuple._1;
                 Iterable<SensorDatum> sensorData = tuple._2;
+
+                // Sort sensor data on time received for PositionDecoder
                 List<SensorDatum> sensorDataList = Lists.newArrayList(sensorData);
                 Collections.sort(sensorDataList, new Comparator<SensorDatum>() {
                     public int compare(SensorDatum o1, SensorDatum o2) {
-                        if (o1.timeAtServer < o2.timeAtServer) return -1;
-                        if (o1.timeAtServer > o2.timeAtServer) return +1;
+                        if (o1.getTimeAtServer() < o2.getTimeAtServer()) return -1;
+                        if (o1.getTimeAtServer() > o2.getTimeAtServer()) return +1;
                         return 0;
                     }
                 });
 
+                // Decode positions
                 PositionDecoder decoder = new PositionDecoder();
-                List<Position> positions = new ArrayList<Position>();
+                List<AircraftPosition> positions = new ArrayList<AircraftPosition>();
                 for (SensorDatum sd : sensorDataList) {
-                    Position pos = null;
-                    if (sd.decodedMessage instanceof AirbornePositionMsg) {
-                        pos = decoder.decodePosition(sd.timeAtServer, (AirbornePositionMsg) sd.decodedMessage);
-                    } else if (sd.decodedMessage instanceof SurfacePositionMsg) {
-                        pos = decoder.decodePosition(sd.timeAtServer, (SurfacePositionMsg) sd.decodedMessage);
+                    Position position = null;
+                    ModeSReply message = sd.getDecodedMessage();
+                    if (message instanceof AirbornePositionMsg) {
+                        position = decoder.decodePosition(sd.getTimeAtServer(), (AirbornePositionMsg) message);
+                    } else if (message instanceof SurfacePositionMsg) {
+                        position = decoder.decodePosition(sd.getTimeAtServer(), (SurfacePositionMsg) message);
                     }
-                    if (pos != null) {
-                        positions.add(pos);
+                    if (position != null) {
+                        positions.add(new AircraftPosition(icao, sd.getTimeAtServer(), position));
                     }
                 }
-                return new Tuple2<String, Iterable<Position>>(tuple._1, positions);
+                return new Tuple2<String, Iterable<AircraftPosition>>(icao, positions);
             }
         });
 
         // Flatten
-        JavaPairRDD<String, Position> positions = positionsByAircraft.flatMapToPair(new PairFlatMapFunction<Tuple2<String, Iterable<Position>>, String, Position>() {
-            public Iterable<Tuple2<String, Position>> call(Tuple2<String, Iterable<Position>> tuple) throws Exception {
-                List<Tuple2<String, Position>> tupleList = new ArrayList<Tuple2<String, Position>>();
-
-                for (Position position: tuple._2) {
-                    tupleList.add(new Tuple2<String, Position>(tuple._1, position));
-                }
-
-                return tupleList;
+        JavaRDD<AircraftPosition> positions = positionsByAircraft.flatMap(new FlatMapFunction<Tuple2<String, Iterable<AircraftPosition>>, AircraftPosition>() {
+            public Iterable<AircraftPosition> call(Tuple2<String, Iterable<AircraftPosition>> t) throws Exception {
+                return t._2;
             }
         });
 
+        long positionsCount = positions.count();
+        long positionsWithAltitudeCount = positions.filter(new Function<AircraftPosition, Boolean>() {
+            public Boolean call(AircraftPosition aircraftPosition) throws Exception {
+                return aircraftPosition.hasAltitude();
+            }
+        }).count();
+
+        log.info(String.format("positions found: %d", positionsCount));
+        log.info(String.format("positions with altitude found: %d", positionsWithAltitudeCount));
+        log.info(String.format("%2.2f%% percent of positions include altitude data", 100d * positionsWithAltitudeCount / positionsCount));
+
         // To CSV
-        JavaRDD<String> positionsCSV = positions.map(new Function<Tuple2<String, Position>, String>() {
-            public String call(Tuple2<String, Position> tuple) throws Exception {
-                Position p = tuple._2;
-//                return String.format("%s,%f,%f,%s", tuple._1, p.getLatitude(), p.getLongitude(), p.getAltitude() == null ? "" : p.getAltitude());
-                 return Joiner.on(",").useForNull("").join(tuple._1, p.getLatitude(), p.getLongitude(), p.getAltitude());
+        JavaRDD<String> positionsCSV = positions.map(new Function<AircraftPosition, String>() {
+            public String call(AircraftPosition p) {
+                return p.toCSV(true);
             }
         });
 
         // To file
         positionsCSV.saveAsTextFile(outputPath);
+
     }
 }

@@ -18,18 +18,19 @@ import java.util.List;
 /**
  * Immutable object representing one datum from a Mode S sensor.
  */
-public class SensorDatum implements Serializable {
+public class SensorDatum extends ModelBase {
     private static final Logger LOG = LogManager.getLogger(SensorDatum.class);
-    private static final Joiner JOINER = Joiner.on(",").useForNull("");
 
-    public final double timeAtServer;
-    public final double timeAtSensor;
-    public final double timestamp;
-    public final String rawMessage;
-    public final int sensorSerialNumber;
+    private final double timeAtServer;
+    private final double timeAtSensor;
+    private final double timestamp;
+    private final String rawMessage;
+    private final int sensorSerialNumber;
 
-    public final ModeSReply decodedMessage;
-    public final String icao;
+    private final ModeSReply decodedMessage;
+    private final String icao;
+
+    // CONSTRUCTOR
 
     public SensorDatum(double timeServer, Double timeSensor, Double timestamp, String rawMessage, int serialNumber) {
 
@@ -57,17 +58,44 @@ public class SensorDatum implements Serializable {
         this.icao = decodedMessage != null ? tools.toHexString(decodedMessage.getIcao24()) : null;
     }
 
+    // GETTERS
+
+    public double getTimeAtServer() {
+        return this.timeAtServer;
+    }
+
+    public Double getTimeAtSensor() {
+        return this.timeAtSensor >= 0 ? this.timeAtSensor : null;
+    }
+
+    public Double getTimestamp() {
+        return this.timestamp >= 0 ? this.timestamp : null ;
+    }
+
+    public String getRawMessage() {
+        return this.rawMessage;
+    }
+
+    public int getSensorSerialNumber() {
+        return this.sensorSerialNumber;
+    }
+
     public boolean isValidMessage() {
         return this.decodedMessage != null;
     }
 
+    public ModeSReply getDecodedMessage() {
+        return this.decodedMessage;
+    }
+
+    public String getIcao() {
+        return this.icao;
+    }
+
+    // FUNCTIONS
+
     public String toCSV() {
-        return JOINER.join(
-                this.timeAtServer,
-                this.timeAtSensor,
-                this.timestamp,
-                this.rawMessage,
-                this.sensorSerialNumber);
+        return super.toCSV(getTimeAtServer(), getTimeAtSensor(), getTimestamp(), getRawMessage(), getSensorSerialNumber());
     }
 
     // STATIC
