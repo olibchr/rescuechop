@@ -30,14 +30,17 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Maps sensor data to aircraft positions.
+ */
 public class AircraftPositions {
 
     public static void main(String[] args) throws IOException {
         Logger log = LogManager.getLogger(AircraftPositions.class);
         log.setLevel(Level.INFO);
 
-        String inputPath = Config.OPEN_SKY_SAMPLE_DATA_PATH;
-        String outputPath = args[0];
+        String inputPath = args[0]; //Config.OPEN_SKY_SAMPLE_DATA_PATH;
+        String outputPath = args[1];
 
         SparkConf sparkConf = new SparkConf().setAppName("LSDE09 AircraftPositions");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);

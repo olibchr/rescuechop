@@ -28,14 +28,19 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Job that takes sensor data as input, groups it by ICAO, and checks each aircraft for ADS-B identifcation messages.
+ * All sensor data belonging to aircrafts that explicitly broadcast they are NOT a rotorcraft, are discarded. Rotorcrafts
+ * or unknowns are left in.
+ */
 public class IdentificationChecker {
 
     public static void main(String[] args) throws IOException {
         Logger log = LogManager.getLogger(IdentificationChecker.class);
         log.setLevel(Level.INFO);
 
-        String inputPath = Config.OPEN_SKY_SAMPLE_DATA_PATH;
-        String outputPath = args[0];
+        String inputPath = args[0]; //Config.OPEN_SKY_SAMPLE_DATA_PATH;
+        String outputPath = args[1];
 
         SparkConf sparkConf = new SparkConf().setAppName("LSDE09 IdentificationChecker");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);

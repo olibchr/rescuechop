@@ -21,15 +21,20 @@ import vu.lsde.core.model.SensorDatum;
 
 import java.io.IOException;
 
+/**
+ * Takes a avro files containing sensor data as input, and then filters out any sensor data belonging to aircraft that
+ * are definitely NOT rotorcraft. This is done by looking at speed and altitude. The remaining sensordata is then output
+ * in the form of CSV.
+ */
 public class Sampler {
 
     public static void main(String[] args) throws IOException {
         Logger log = LogManager.getLogger(Sampler.class);
         log.setLevel(Level.INFO);
 
-        String inputPath = Config.OPEN_SKY_DATA_PATH;// + "raw2015090800.avro";
+        String inputPath = args[0]; //Config.OPEN_SKY_DATA_PATH;// + "raw2015090800.avro";
+        String outputPath = args[1];
 //        String outputPath = Config.OPEN_SKY_SAMPLE_DATA_PATH;
-        String outputPath = args[0];
 
         SparkConf sparkConf = new SparkConf().setAppName("LSDE09 Sampler");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
