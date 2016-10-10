@@ -89,8 +89,9 @@ public class Sampler {
                         }
                     } else if (sd.getDecodedMessage() instanceof IdentificationMsg) {
                         IdentificationMsg msg = (IdentificationMsg) sd.getDecodedMessage();
-                        return msg.getEmitterCategory() == 0 // No information
-                                || msg.getCategoryDescription().equals("Rotorcraft");
+                        if (msg.getEmitterCategory() != 0 && !msg.getCategoryDescription().equals("Rotorcraft")) {
+                            return false;
+                        }
                     }
                 }
                 return true;

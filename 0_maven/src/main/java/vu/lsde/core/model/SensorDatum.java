@@ -18,7 +18,7 @@ import java.util.List;
 /**
  * Immutable object representing one datum from a Mode S sensor.
  */
-public class SensorDatum extends ModelBase {
+public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     private static final Logger LOG = LogManager.getLogger(SensorDatum.class);
     private static final double NULL_DOUBLE = Double.MIN_VALUE;
 
@@ -111,6 +111,15 @@ public class SensorDatum extends ModelBase {
         return super.toCSV(getSensorLatitude(), getSensorLongitude(), getTimeAtServer(), getTimeAtSensor(), getTimestamp(), getRawMessage(), getSensorSerialNumber());
     }
 
+    public int compareTo(SensorDatum other) {
+        if (this.icao.equals(other.icao)) {
+            if (this.timeAtServer < other.timeAtServer) return -1;
+            if (this.timeAtServer > other.timeAtServer) return +1;
+            return 0;
+        }
+        return this.icao.compareTo(other.icao);
+    }
+
     // STATIC
 
     /**
@@ -144,13 +153,13 @@ public class SensorDatum extends ModelBase {
 
         if (tokens.length < 6) throw new IllegalArgumentException(("CSV line for SensorDatum should consist of 7 columns"));
 
-        double sensorLat = tokens[0].trim().length() == 0 ? -1 : Double.parseDouble(tokens[0]);
-        double sensorLon = tokens[1].trim().length() == 0 ? -1 : Double.parseDouble(tokens[1]);
-        double timeAtServer = tokens[2].trim().length() == 0 ? -1 : Double.parseDouble(tokens[2]);
-        double timeAtSensor = tokens[3].trim().length() == 0 ? -1 : Double.parseDouble(tokens[3]);
-        double timestamp = tokens[4].trim().length() == 0 ? -1 : Double.parseDouble(tokens[4]);
+        double sensorLat = tokens[0].trim().length() == 0 ? Double.MIN_VALUE : Double.parseDouble(tokens[0]);
+        double sensorLon = tokens[1].trim().length() == 0 ? Double.MIN_VALUE : Double.parseDouble(tokens[1]);
+        double timeAtServer = Double.parseDouble(tokens[2]);
+        double timeAtSensor = tokens[3].trim().length() == 0 ? Double.MIN_VALUE : Double.parseDouble(tokens[3]);
+        double timestamp = tokens[4].trim().length() == 0 ? Double.MIN_VALUE : Double.parseDouble(tokens[4]);
         String rawMessage = tokens[5];
-        int sensorSerialNumber = tokens.length < 6 || tokens[6].trim().length() == 0 ? -1 : Integer.parseInt(tokens[6]);
+        int sensorSerialNumber = Integer.parseInt(tokens[6]);
 
         return new SensorDatum(sensorLat, sensorLon, timeAtServer, timeAtSensor, timestamp, rawMessage, sensorSerialNumber);
     }

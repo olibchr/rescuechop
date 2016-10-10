@@ -8,7 +8,7 @@ import org.opensky.libadsb.msgs.VelocityOverGroundMsg;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FlightDatum {
+public class FlightDatum extends ModelBase {
     private final static double NULL_DOUBLE = Double.MIN_VALUE;
 
     private String icao;
@@ -19,6 +19,8 @@ public class FlightDatum {
     private double heading;
     private double velocity;
     private double rateOfClimb;
+
+    // CONSTRUCTORS
 
     public FlightDatum(String icao, double time, Double lon, Double lat, Double alt, Double heading, Double velo, Double roc) {
         init(icao, time, lon, lat, alt, heading, velo, roc);
@@ -97,6 +99,12 @@ public class FlightDatum {
         return nullDoubleToNull(rateOfClimb);
     }
 
+    // INSTANCE METHODS
+
+    public String toCSV() {
+        return super.toCSV(getIcao(), getTime(), getLatitude(), getLongitude(), getAltitude(), getHeading(), getVelocity(), getRateOfClimb());
+    }
+
     // HELP METHODS
 
     private double nullToNullDouble(Double value) {
@@ -107,66 +115,63 @@ public class FlightDatum {
         return value == NULL_DOUBLE ? null : value;
     }
 
-    public static List<FlightDatum> mergeFlightData(Iterable<FlightDatum> flightData) {
-        List<FlightDatum> result = new ArrayList<FlightDatum>();
+    // STATIC METHODS
 
-        String icao = null;
-        double time = NULL_DOUBLE;
-        List<Double> longitudes = new ArrayList<Double>();
-        List<Double> latitudes = new ArrayList<Double>();
-        List<Double> altitudes = new ArrayList<Double>();
+    /**
+     * Merges given flight data into one flight datum object. All the flight data should belong to the same aircraft
+     * and timestamp.
+     *
+     * @param icao
+     * @param time
+     * @param flightData
+     * @return
+     */
+    public static FlightDatum mergeFlightData(String icao, double time, Iterable<FlightDatum> flightData) {
+        List<Double> lons = new ArrayList<Double>();
+        List<Double> lats = new ArrayList<Double>();
+        List<Double> alts = new ArrayList<Double>();
         List<Double> headings = new ArrayList<Double>();
-        List<Double> velocities = new ArrayList<Double>();
+        List<Double> velos = new ArrayList<Double>();
         List<Double> rocs = new ArrayList<Double>();
 
         for (FlightDatum fd : flightData) {
-            if (time != NULL_DOUBLE && time != fd.getTime() || icao != null && !icao.equals(fd.getIcao())) {
-                result.add(new FlightDatum(
-                        icao,
-                        time,
-                        average(longitudes),
-                        average(latitudes),
-                        average(altitudes),
-                        average(headings),
-                        average(velocities),
-                        average(rocs)));
-
-                longitudes.clear();
-                latitudes.clear();
-                altitudes.clear();
-                headings.clear();
-                velocities.clear();
-                rocs.clear();
+            if (time != fd.getTime() || !icao.equals(fd.getIcao())) {
+                throw new IllegalArgumentException("FlightDatum does not have correct time or icao");
             }
-
-            icao = fd.getIcao();
-            time = fd.getTime();
-            addIfNotNull(fd.getLongitude(), longitudes);
-            addIfNotNull(fd.getLatitude(), latitudes);
-            addIfNotNull(fd.getAltitude(), altitudes);
+            addIfNotNull(fd.getLongitude(), lons);
+            addIfNotNull(fd.getLatitude(), lats);
+            addIfNotNull(fd.getAltitude(), alts);
             addIfNotNull(fd.getHeading(), headings);
-            addIfNotNull(fd.getVelocity(), velocities);
+            addIfNotNull(fd.getVelocity(), velos);
             addIfNotNull(fd.getRateOfClimb(), rocs);
         }
 
-        return result;
+        return new FlightDatum(icao, time, avg(lons), avg(lats), avg(alts), avg(headings), avg(velos), avg(rocs));
     }
 
+    /**
+     * Add a value to a list only if the value is not null.
+     *
+     * @param value
+     * @param list
+     */
     private static void addIfNotNull(Object value, List list) {
         if (value != null) {
             list.add(value);
         }
     }
 
-    private static Double average(List<Double> doubles) {
-        return doubles.isEmpty() ? null : sum(doubles) / doubles.size();
-    }
-
-    private static Double sum(List<Double> doubles) {
-        double sum = 0;
+    /**
+     * Return the average of the provided values, or null if no values were provided.
+     *
+     * @param doubles
+     * @return
+     */
+    private static Double avg(Iterable<Double> doubles) {
+        double sum = 0, n = 0;
         for (double d : doubles) {
-            sum += d;
+            sum += d; n++;
         }
-        return sum;
+        return n > 0 ? sum / n : null;
     }
 }
