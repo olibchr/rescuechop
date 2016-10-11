@@ -53,59 +53,29 @@ public class Flights {
         });
         long aircraftCount = flightDataByAircraft.count();
 
-        final Accumulator<Integer> mergedFlightDataAcc = sc.accumulator(0);
-
-        // Merge flight data that are from the same timestamp
-        JavaPairRDD<String, List<FlightDatum>> mergedFlightDataByAircraft = flightDataByAircraft.mapToPair(new PairFunction<Tuple2<String, Iterable<FlightDatum>>, String, List<FlightDatum>>() {
-            public Tuple2<String, List<FlightDatum>> call(Tuple2<String, Iterable<FlightDatum>> tuple) throws Exception {
-                String icao = tuple._1;
-                Iterable<FlightDatum> flightData = tuple._2;
-
-                // Map to list and sort
-                List<FlightDatum> flightDataList = Lists.newArrayList(flightData);
-                Collections.sort(flightDataList);
-
-                List<FlightDatum> mergedFlightData = new ArrayList<FlightDatum>();
-                List<FlightDatum> lastFlightData = new ArrayList<FlightDatum>();
-                double lastTime = flightDataList.get(0).getTime();
-                for (FlightDatum fd : flightDataList) {
-                    if (fd.getTime() != lastTime) {
-                        FlightDatum merged = FlightDatum.mergeFlightData(icao, lastTime, lastFlightData);
-                        mergedFlightData.add(merged);
-
-                        lastFlightData.clear();
-                        lastTime = fd.getTime();
-                    }
-                    lastFlightData.add(fd);
-                }
-                FlightDatum merged = FlightDatum.mergeFlightData(icao, lastTime, lastFlightData);
-                mergedFlightData.add(merged);
-
-                mergedFlightDataAcc.add(mergedFlightData.size());
-
-                return new Tuple2<String, List<FlightDatum>>(icao, mergedFlightData);
-            }
-        });
-
-        final Accumulator<Integer> shortFlightsAcc = sc.accumulator(0);
+        final Accumulator<Integer> rejectedFlightsAcc = sc.accumulator(0);
+        final Accumulator<Integer> acceptedFlightsAcc = sc.accumulator(0);
 
         // Group flight data into flights
-        JavaPairRDD<String, Iterable<Flight>> flightsByAircraft = mergedFlightDataByAircraft.flatMapValues(new Function<List<FlightDatum>, Iterable<Iterable<Flight>>>() {
-            public Iterable<Iterable<Flight>> call(List<FlightDatum> flightData) throws Exception {
-                String icao = flightData.get(0).getIcao();
+        JavaPairRDD<String, Iterable<Flight>> flightsByAircraft = flightDataByAircraft.flatMapValues(new Function<Iterable<FlightDatum>, Iterable<Iterable<Flight>>>() {
+            public Iterable<Iterable<Flight>> call(Iterable<FlightDatum> flightData) throws Exception {
+                List<FlightDatum> flightDataList = Lists.newArrayList(flightData);
+
+                String icao = flightDataList.get(0).getIcao();
                 List<Flight> flights = new ArrayList<Flight>();
 
                 // First do a rough grouping merely on time
                 List<FlightDatum> lastFlightData = new ArrayList<FlightDatum>();
-                double lastTime = flightData.get(0).getTime();
-                for (FlightDatum fd : flightData) {
+                double lastTime = flightDataList.get(0).getTime();
+                for (FlightDatum fd : flightDataList) {
                     if (fd.getTime() - lastTime >= MIN_TIME_DELTA) {
                         Flight flight = new Flight(icao, lastFlightData);
                         lastFlightData.clear();
                         if (flight.getDuration() >= MIN_DURATION) {
                             flights.add(flight);
+                            acceptedFlightsAcc.add(1);
                         } else {
-                            shortFlightsAcc.add(1);
+                            rejectedFlightsAcc.add(1);
                         }
                     }
                     lastFlightData.add(fd);
@@ -115,13 +85,6 @@ public class Flights {
                 return (Iterable) flights;
             }
         });
-
-        // Count aircraft with flights
-        long aircraftWithFlightsCount = flightsByAircraft.filter(new Function<Tuple2<String, Iterable<Flight>>, Boolean>() {
-            public Boolean call(Tuple2<String, Iterable<Flight>> tuple) throws Exception {
-                return !tuple._2.iterator().hasNext();
-            }
-        }).count();
 
         // Flatten
         JavaRDD<Flight> flights = flightsByAircraft.flatMap(new FlatMapFunction<Tuple2<String, Iterable<Flight>>, Flight>() {
@@ -145,10 +108,9 @@ public class Flights {
         List<String> statistics = new ArrayList<String>();
         statistics.add(numberOfItemsStatistic("input records", recordsCount));
         statistics.add(numberOfItemsStatistic("input aircraft", aircraftCount));
-        statistics.add(numberOfItemsStatistic("records after merging", mergedFlightDataAcc.value()));
-        statistics.add(numberOfItemsStatistic("rejected short flights", shortFlightsAcc.value()));
+        statistics.add(numberOfItemsStatistic("rejected short flights", rejectedFlightsAcc.value()));
         statistics.add(numberOfItemsStatistic("resulting flights", flightsCount));
-        statistics.add(numberOfItemsStatistic("aircraft with flights", aircraftWithFlightsCount));
+        statistics.add(numberOfItemsStatistic("aircraft with flights", acceptedFlightsAcc.value()));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 

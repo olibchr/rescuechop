@@ -8,9 +8,10 @@ import vu.lsde.core.io.CsvReader;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+
+import static vu.lsde.core.util.Util.firstNonNull;
 
 public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
     private static final DateFormat DATE_TIME_FORMAT = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
@@ -106,6 +107,45 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
 
     // INSTANCE METHODS
 
+    public FlightDatum extend(FlightDatum other) {
+        if (other == null) {
+            return this;
+        } else {
+            return new FlightDatum(icao, time,
+                    firstNonNull(this.getLongitude(), other.getLongitude()),
+                    firstNonNull(this.getLatitude(), other.getLatitude()),
+                    firstNonNull(this.getAltitude(), other.getAltitude()),
+                    firstNonNull(this.getHeading(), other.getHeading()),
+                    firstNonNull(this.getVelocity(), other.getVelocity()),
+                    firstNonNull(this.getRateOfClimb(), other.getRateOfClimb()));
+        }
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof FlightDatum) {
+            FlightDatum o = (FlightDatum) other;
+            return this.icao.equals(o.icao)
+                    && this.time == o.time
+                    && this.longitude == o.longitude
+                    && this.latitude == o.latitude
+                    && this.altitude == o.altitude
+                    && this.heading == o.heading
+                    && this.velocity == o.velocity
+                    && this.rateOfClimb == o.rateOfClimb;
+        }
+        return false;
+    }
+
+    public int compareTo(FlightDatum other) {
+        if (this.icao.equals(other.icao)) {
+            if (this.time < other.time) return -1;
+            if (this.time > other.time) return +1;
+            return 0;
+        }
+        return this.icao.compareTo(other.icao);
+    }
+
     public String toCSV() {
         return toCSV(false);
     }
@@ -154,72 +194,5 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
             return Double.parseDouble(s);
         }
         return null;
-    }
-
-    /**
-     * Merges given flight data into one flight datum object. All the flight data should belong to the same aircraft
-     * and timestamp.
-     *
-     * @param icao
-     * @param time
-     * @param flightData
-     * @return
-     */
-    public static FlightDatum mergeFlightData(String icao, double time, Iterable<FlightDatum> flightData) {
-        List<Double> lons = new ArrayList<Double>();
-        List<Double> lats = new ArrayList<Double>();
-        List<Double> alts = new ArrayList<Double>();
-        List<Double> headings = new ArrayList<Double>();
-        List<Double> velos = new ArrayList<Double>();
-        List<Double> rocs = new ArrayList<Double>();
-
-        for (FlightDatum fd : flightData) {
-            if (time != fd.getTime() || !icao.equals(fd.getIcao())) {
-                throw new IllegalArgumentException("FlightDatum does not have correct time or icao");
-            }
-            addIfNotNull(fd.getLongitude(), lons);
-            addIfNotNull(fd.getLatitude(), lats);
-            addIfNotNull(fd.getAltitude(), alts);
-            addIfNotNull(fd.getHeading(), headings);
-            addIfNotNull(fd.getVelocity(), velos);
-            addIfNotNull(fd.getRateOfClimb(), rocs);
-        }
-
-        return new FlightDatum(icao, time, avg(lons), avg(lats), avg(alts), avg(headings), avg(velos), avg(rocs));
-    }
-
-    /**
-     * Add a value to a list only if the value is not null.
-     *
-     * @param value
-     * @param list
-     */
-    private static void addIfNotNull(Object value, List list) {
-        if (value != null) {
-            list.add(value);
-        }
-    }
-
-    /**
-     * Return the average of the provided values, or null if no values were provided.
-     *
-     * @param doubles
-     * @return
-     */
-    private static Double avg(Iterable<Double> doubles) {
-        double sum = 0, n = 0;
-        for (double d : doubles) {
-            sum += d; n++;
-        }
-        return n > 0 ? sum / n : null;
-    }
-
-    public int compareTo(FlightDatum other) {
-        if (this.icao.equals(other.icao)) {
-            if (this.time < other.time) return -1;
-            if (this.time > other.time) return +1;
-            return 0;
-        }
-        return this.icao.compareTo(other.icao);
     }
 }

@@ -21,8 +21,6 @@ import java.util.Collections;
 import java.util.List;
 
 public class MergeFlightData {
-    private static final double MIN_TIME_DELTA = 20 * 60;
-    private static final double MIN_DURATION = 60;
 
     public static void main(String[] args) {
         Logger log = LogManager.getLogger(MergeFlightData.class);
@@ -45,15 +43,20 @@ public class MergeFlightData {
             }
         });
 
-        // Group by aircraft
-        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = flightData.groupBy(new Function<FlightDatum, String>() {
-            public String call(FlightDatum flightDatum) throws Exception {
-                return flightDatum.getIcao();
+        // Group to pairs
+        JavaPairRDD<String, FlightDatum> pairs = flightData.mapToPair(new PairFunction<FlightDatum, String, FlightDatum>() {
+            public Tuple2<String, FlightDatum> call(FlightDatum flightDatum) throws Exception {
+                return new Tuple2<String, FlightDatum>(flightDatum.getIcao(), flightDatum);
             }
         });
-        long aircraftCount = flightDataByAircraft.count();
 
-        final Accumulator<Integer> mergedFlightDataAcc = sc.accumulator(0);
+        // Group by aircraft
+//        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = flightData.groupBy(new Function<FlightDatum, String>() {
+//            public String call(FlightDatum flightDatum) throws Exception {
+//                return flightDatum.getIcao();
+//            }
+//        });
+        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = pairs.groupByKey();
 
         // Merge flight data that are from the same timestamp
         JavaPairRDD<String, Iterable<FlightDatum>> mergedFlightDataByAircraft = flightDataByAircraft.mapToPair(new PairFunction<Tuple2<String, Iterable<FlightDatum>>, String, Iterable<FlightDatum>>() {
@@ -61,27 +64,7 @@ public class MergeFlightData {
                 String icao = tuple._1;
                 Iterable<FlightDatum> flightData = tuple._2;
 
-                // Map to list and sort
-                List<FlightDatum> flightDataList = Lists.newArrayList(flightData);
-                Collections.sort(flightDataList);
-
-                List<FlightDatum> mergedFlightData = new ArrayList<FlightDatum>();
-                List<FlightDatum> lastFlightData = new ArrayList<FlightDatum>();
-                double lastTime = flightDataList.get(0).getTime();
-                for (FlightDatum fd : flightDataList) {
-                    if (fd.getTime() != lastTime) {
-                        FlightDatum merged = FlightDatum.mergeFlightData(icao, lastTime, lastFlightData);
-                        mergedFlightData.add(merged);
-
-                        lastFlightData.clear();
-                        lastTime = fd.getTime();
-                    }
-                    lastFlightData.add(fd);
-                }
-                FlightDatum merged = FlightDatum.mergeFlightData(icao, lastTime, lastFlightData);
-                mergedFlightData.add(merged);
-
-                mergedFlightDataAcc.add(mergedFlightData.size());
+                List<FlightDatum> mergedFlightData = mergeFlightData(flightData);
 
                 return new Tuple2<String, Iterable<FlightDatum>>(icao, mergedFlightData);
             }
@@ -108,11 +91,32 @@ public class MergeFlightData {
         // Print statistics
         List<String> statistics = new ArrayList<String>();
         statistics.add(numberOfItemsStatistic("input records", recordsCount));
-        statistics.add(numberOfItemsStatistic("input aircraft", aircraftCount));
-        statistics.add(numberOfItemsStatistic("records after merging (accumulator)", mergedFlightDataAcc.value()));
         statistics.add(numberOfItemsStatistic("output records", flightDataCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
+
+    protected static List<FlightDatum> mergeFlightData(Iterable<FlightDatum> flightData) {
+        List<FlightDatum> result = new ArrayList<FlightDatum>();
+
+        // Map to list and sort
+        List<FlightDatum> flightDataList = Lists.newArrayList(flightData);
+        Collections.sort(flightDataList);
+
+        FlightDatum mergedFlightDatum = flightDataList.get(0);
+        for (FlightDatum fd : flightDataList) {
+            if (fd.getTime() < mergedFlightDatum.getTime() + 1) {
+                mergedFlightDatum = mergedFlightDatum.extend(fd);
+            } else {
+                result.add(mergedFlightDatum);
+                mergedFlightDatum = fd;
+            }
+        }
+        result.add(mergedFlightDatum);
+
+        return result;
+    }
+
+    // Helper methods
 
     private static String numberOfItemsStatistic(String itemName, long count) {
         return String.format("Number of %s: %d", itemName, count);
