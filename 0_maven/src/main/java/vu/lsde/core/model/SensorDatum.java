@@ -1,6 +1,7 @@
 package vu.lsde.core.model;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.log4j.LogManager;
@@ -11,6 +12,7 @@ import org.opensky.libadsb.exceptions.BadFormatException;
 import org.opensky.libadsb.exceptions.UnspecifiedFormatError;
 import org.opensky.libadsb.msgs.ModeSReply;
 import org.opensky.libadsb.tools;
+import vu.lsde.core.io.CsvReader;
 
 import java.io.Serializable;
 import java.util.List;
@@ -25,8 +27,6 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     private final double sensorLatitude;
     private final double sensorLongitude;
     private final double timeAtServer;
-    private final double timeAtSensor;
-    private final double timestamp;
     private final String rawMessage;
     private final int sensorSerialNumber;
 
@@ -35,15 +35,13 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
 
     // CONSTRUCTOR
 
-    public SensorDatum(Double sensorLatitude, Double sensorLongitude, double timeServer, Double timeSensor, Double timestamp, String rawMessage, int serialNumber) {
+    public SensorDatum(Double sensorLatitude, Double sensorLongitude, double timeServer, String rawMessage, int serialNumber) {
 
         if (rawMessage == null) throw new NullPointerException("rawMessage may not be null");
 
-        this.sensorLatitude = sensorLatitude == null ? NULL_DOUBLE : sensorLatitude;
-        this.sensorLongitude = sensorLongitude == null ? NULL_DOUBLE : sensorLongitude;
+        this.sensorLatitude = nullToNullDouble(sensorLatitude);
+        this.sensorLongitude = nullToNullDouble(sensorLongitude);
         this.timeAtServer = timeServer;
-        this.timeAtSensor = timeSensor == null ? NULL_DOUBLE : timeSensor;
-        this.timestamp = timestamp == null ? NULL_DOUBLE : timestamp;
         this.rawMessage = rawMessage;
         this.sensorSerialNumber = serialNumber;
 
@@ -66,23 +64,15 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     // GETTERS
 
     public Double getSensorLatitude() {
-        return this.sensorLatitude != NULL_DOUBLE ? this.sensorLatitude : null;
+        return nullDoubleToNull(this.sensorLatitude);
     }
 
     public Double getSensorLongitude() {
-        return this.sensorLongitude != NULL_DOUBLE ? this.sensorLongitude : null;
+        return nullDoubleToNull(this.sensorLongitude);
     }
 
     public double getTimeAtServer() {
         return this.timeAtServer;
-    }
-
-    public Double getTimeAtSensor() {
-        return this.timeAtSensor != NULL_DOUBLE ? this.timeAtSensor : null;
-    }
-
-    public Double getTimestamp() {
-        return this.timestamp != NULL_DOUBLE ? this.timestamp : null ;
     }
 
     public String getRawMessage() {
@@ -108,7 +98,7 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     // FUNCTIONS
 
     public String toCSV() {
-        return super.toCSV(getSensorLatitude(), getSensorLongitude(), getTimeAtServer(), getTimeAtSensor(), getTimestamp(), getRawMessage(), getSensorSerialNumber());
+        return super.toCSV(getSensorLatitude(), getSensorLongitude(), getTimeAtServer(), getRawMessage(), getSensorSerialNumber());
     }
 
     public int compareTo(SensorDatum other) {
@@ -118,6 +108,16 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
             return 0;
         }
         return this.icao.compareTo(other.icao);
+    }
+
+    // HELP METHODS
+
+    private double nullToNullDouble(Double value) {
+        return value == null ? NULL_DOUBLE : value;
+    }
+
+    private Double nullDoubleToNull(double value) {
+        return value == NULL_DOUBLE ? null : value;
     }
 
     // STATIC
@@ -134,8 +134,6 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
                 (Double) record.get("sensorLatitude"),
                 (Double) record.get("sensorLongitude"),
                 (Double) record.get("timeAtServer"),
-                (Double) record.get("timeAtSensor"),
-                (Double) record.get("timestamp"),
                 (String) record.get("rawMessage"),
                 (Integer) record.get("sensorSerialNumber")
         );
@@ -149,18 +147,26 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
      * @return
      */
     public static SensorDatum fromCSV(String csv) {
-        String[] tokens = csv.split(",");
+//        String[] tokens = csv.split(",");
+//
+//        if (tokens.length < 4) throw new IllegalArgumentException("CSV line for SensorDatum should consist of 7 columns");
+//
+//        double sensorLat = tokens[0].trim().length() == 0 ? Double.MIN_VALUE : Double.parseDouble(tokens[0]);
+//        double sensorLon = tokens[1].trim().length() == 0 ? Double.MIN_VALUE : Double.parseDouble(tokens[1]);
+//        double timeAtServer = Double.parseDouble(tokens[2]);
+//        String rawMessage = tokens[3];
+//        int sensorSerialNumber = Integer.parseInt(tokens[4]);
 
-        if (tokens.length < 6) throw new IllegalArgumentException(("CSV line for SensorDatum should consist of 7 columns"));
+        List<String> tokens = CsvReader.getTokens(csv);
 
-        double sensorLat = tokens[0].trim().length() == 0 ? Double.MIN_VALUE : Double.parseDouble(tokens[0]);
-        double sensorLon = tokens[1].trim().length() == 0 ? Double.MIN_VALUE : Double.parseDouble(tokens[1]);
-        double timeAtServer = Double.parseDouble(tokens[2]);
-        double timeAtSensor = tokens[3].trim().length() == 0 ? Double.MIN_VALUE : Double.parseDouble(tokens[3]);
-        double timestamp = tokens[4].trim().length() == 0 ? Double.MIN_VALUE : Double.parseDouble(tokens[4]);
-        String rawMessage = tokens[5];
-        int sensorSerialNumber = Integer.parseInt(tokens[6]);
+        if (tokens.size() < 5) throw new IllegalArgumentException("CSV line for SensorDatum should consist of 5 columns");
 
-        return new SensorDatum(sensorLat, sensorLon, timeAtServer, timeAtSensor, timestamp, rawMessage, sensorSerialNumber);
+        double sensorLat = tokens.get(0).length() == 0 ? NULL_DOUBLE : Double.parseDouble(tokens.get(0));
+        double sensorLon = tokens.get(1).length() == 0 ? NULL_DOUBLE : Double.parseDouble(tokens.get(1));
+        double timeAtServer = Double.parseDouble(tokens.get(2));
+        String rawMessage = tokens.get(3);
+        int sensorSerialNumber = Integer.parseInt(tokens.get(4));
+
+        return new SensorDatum(sensorLat, sensorLon, timeAtServer, rawMessage, sensorSerialNumber);
     }
 }

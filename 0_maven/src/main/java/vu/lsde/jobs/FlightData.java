@@ -42,6 +42,7 @@ public class FlightData {
 
         // Load CSV
         JavaRDD<String> records = sc.textFile(inputPath);
+        long recordsCount = records.count();
 
         // Parse CSV
         JavaRDD<SensorDatum> sensorData = records.map(new Function<String, SensorDatum>() {
@@ -54,11 +55,12 @@ public class FlightData {
         sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
             public Boolean call(SensorDatum sd) {
                 return sd.getDecodedMessage() instanceof AirbornePositionMsg
-                        || sd.getDecodedMessage() instanceof SurfacePositionMsg
-                        || sd.getDecodedMessage() instanceof AirspeedHeadingMsg
-                        || sd.getDecodedMessage() instanceof VelocityOverGroundMsg;
+                    || sd.getDecodedMessage() instanceof SurfacePositionMsg
+                    || sd.getDecodedMessage() instanceof AirspeedHeadingMsg
+                    || sd.getDecodedMessage() instanceof VelocityOverGroundMsg;
             }
         });
+        long filteredRecordsCount = sensorData.count();
 
         // Group models by icao
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData.groupBy(new Function<SensorDatum, String>() {
@@ -107,24 +109,7 @@ public class FlightData {
                 return new Tuple2<String, Iterable<FlightDatum>>(icao, flightData);
             }
         });
-
-        // Filter out vehicles that are always at zero altitude, or that don't have any position data
-        flightDataByAircraft = flightDataByAircraft.filter(new Function<Tuple2<String, Iterable<FlightDatum>>, Boolean>() {
-            public Boolean call(Tuple2<String, Iterable<FlightDatum>> tuple) throws Exception {
-                for (FlightDatum fd : tuple._2) {
-                    if (fd.getAltitude() != null) {
-                        if (fd.getAltitude() > 0) {
-                            return true;
-                        }
-                    } else if (fd.getLatitude() != null) {
-                        // if some of the position data just didn't include altitude data, then we can't say for sure the
-                        // vehicle was always on the ground, and so we leave it in
-                        return true;
-                    }
-                }
-                return false;
-            }
-        });
+        long outputAircraftCount = flightDataByAircraft.count();
 
         // Flatten
         JavaRDD<FlightDatum> flightData = flightDataByAircraft.flatMap(new FlatMapFunction<Tuple2<String, Iterable<FlightDatum>>, FlightDatum>() {
@@ -136,11 +121,65 @@ public class FlightData {
         // To CSV
         JavaRDD<String> flightDataCSV = flightData.map(new Function<FlightDatum, String>() {
             public String call(FlightDatum fd) {
-                return fd.toCSV();
+                return fd.toCSV(true);
             }
         });
 
         // To file
         flightDataCSV.saveAsTextFile(outputPath);
+
+        // Get statistics on flight data
+        long flightDataCount = flightData.count();
+        long positionDataCount = flightData.filter(new Function<FlightDatum, Boolean>() {
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.getLatitude() != null;
+            }
+        }).count();
+        long altitudeDataCount = flightData.filter(new Function<FlightDatum, Boolean>() {
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.getAltitude() != null;
+            }
+        }).count();
+        long velocityDataCount = flightData.filter(new Function<FlightDatum, Boolean>() {
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.getVelocity() != null;
+            }
+        }).count();
+        long rocDataCount = flightData.filter(new Function<FlightDatum, Boolean>() {
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.getRateOfClimb() != null;
+            }
+        }).count();
+        long headingDataCount = flightData.filter(new Function<FlightDatum, Boolean>() {
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.getHeading() != null;
+            }
+        }).count();
+
+        // Print statistics
+        List<String> statistics = new ArrayList<String>();
+        statistics.add(numberOfItemsStatistic("input records", recordsCount));
+        statistics.add(numberOfItemsStatistic("filtered records", filteredRecordsCount));
+        statistics.add(numberOfItemsStatistic("aircraft", outputAircraftCount));
+        statistics.add(numberOfItemsStatistic("output flight data", flightDataCount));
+        statistics.add(numberOfItemsStatistic("position data", positionDataCount, flightDataCount));
+        statistics.add(numberOfItemsStatistic("altitude data", altitudeDataCount, flightDataCount));
+        statistics.add(numberOfItemsStatistic("velocity data", velocityDataCount, flightDataCount));
+        statistics.add(numberOfItemsStatistic("rate of climb data", rocDataCount, flightDataCount));
+        statistics.add(numberOfItemsStatistic("heading data", headingDataCount, flightDataCount));
+        saveStatisticsAsTextFile(sc, outputPath, statistics);
+    }
+
+    private static String numberOfItemsStatistic(String itemName, long count) {
+        return String.format("Number of %s: %d", itemName, count);
+    }
+
+    private static String numberOfItemsStatistic(String itemName, long count, long parentCount) {
+        return String.format("Number of %s: %d (%.2f%%)", itemName, count, 100.0 * count / parentCount);
+    }
+
+    private static void saveStatisticsAsTextFile(JavaSparkContext sc, String outputPath, List<String> statisticsLines) {
+        JavaRDD<String> statsRDD = sc.parallelize(statisticsLines).coalesce(1);
+        statsRDD.saveAsTextFile(outputPath + "_stats");
     }
 }

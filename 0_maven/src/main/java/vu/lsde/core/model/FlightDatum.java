@@ -5,10 +5,14 @@ import org.opensky.libadsb.exceptions.MissingInformationException;
 import org.opensky.libadsb.msgs.AirspeedHeadingMsg;
 import org.opensky.libadsb.msgs.VelocityOverGroundMsg;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class FlightDatum extends ModelBase {
+    private static final DateFormat DATE_TIME_FORMAT = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
     private final static double NULL_DOUBLE = Double.MIN_VALUE;
 
     private String icao;
@@ -102,7 +106,17 @@ public class FlightDatum extends ModelBase {
     // INSTANCE METHODS
 
     public String toCSV() {
-        return super.toCSV(getIcao(), getTime(), getLatitude(), getLongitude(), getAltitude(), getHeading(), getVelocity(), getRateOfClimb());
+        return toCSV(false);
+    }
+
+    public String toCSV(boolean prettyTime) {
+        Object time = getTime();
+        if (prettyTime) {
+            Date date = new Date();
+            date.setTime((long) getTime() * 1000);
+            time = DATE_TIME_FORMAT.format(date);
+        }
+        return super.toCSV(getIcao(), time, getLatitude(), getLongitude(), getAltitude(), getHeading(), getVelocity(), getRateOfClimb());
     }
 
     // HELP METHODS

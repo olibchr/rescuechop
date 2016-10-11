@@ -112,11 +112,15 @@ public class IdentificationChecker {
         statistics.add(numberOfItemsStatistic("unique aircraft", aircraftCount));
         statistics.add(numberOfItemsStatistic("definite helicopters", rotorcraftCount));
         statistics.add(numberOfItemsStatistic("messages in final sample", outputLinesCount));
-        JavaRDD<String> statsRDD = sc.parallelize(statistics).coalesce(1);
-        statsRDD.saveAsTextFile(outputPath + "_stats");
+        saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 
     private static String numberOfItemsStatistic(String itemName, long count) {
         return String.format("Number of %s: %d", itemName, count);
+    }
+
+    private static void saveStatisticsAsTextFile(JavaSparkContext sc, String outputPath, List<String> statisticsLines) {
+        JavaRDD<String> statsRDD = sc.parallelize(statisticsLines).coalesce(1);
+        statsRDD.saveAsTextFile(outputPath + "_stats");
     }
 }
