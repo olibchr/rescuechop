@@ -86,7 +86,7 @@ public class FlightData {
                     ModeSReply message = sd.getDecodedMessage();
 
                     if (message instanceof AirbornePositionMsg || message instanceof SurfacePositionMsg ) {
-                        Position position = null;
+                        Position position;
                         Position sensorPosition = new Position(sd.getSensorLongitude(), sd.getSensorLatitude(), null);
 
                         if (message instanceof AirbornePositionMsg) {
@@ -109,7 +109,7 @@ public class FlightData {
                 return new Tuple2<String, Iterable<FlightDatum>>(icao, flightData);
             }
         });
-        long outputAircraftCount = flightDataByAircraft.count();
+        long outputAircraftCount = flightDataByAircraft.keys().distinct().count();
 
         // Flatten
         JavaRDD<FlightDatum> flightData = flightDataByAircraft.flatMap(new FlatMapFunction<Tuple2<String, Iterable<FlightDatum>>, FlightDatum>() {
@@ -121,7 +121,7 @@ public class FlightData {
         // To CSV
         JavaRDD<String> flightDataCSV = flightData.map(new Function<FlightDatum, String>() {
             public String call(FlightDatum fd) {
-                return fd.toCSV(true);
+                return fd.toCSV();
             }
         });
 

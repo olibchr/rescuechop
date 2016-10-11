@@ -4,6 +4,7 @@ import org.opensky.libadsb.Position;
 import org.opensky.libadsb.exceptions.MissingInformationException;
 import org.opensky.libadsb.msgs.AirspeedHeadingMsg;
 import org.opensky.libadsb.msgs.VelocityOverGroundMsg;
+import vu.lsde.core.io.CsvReader;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -11,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-public class FlightDatum extends ModelBase {
+public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
     private static final DateFormat DATE_TIME_FORMAT = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
     private final static double NULL_DOUBLE = Double.MIN_VALUE;
 
@@ -131,6 +132,30 @@ public class FlightDatum extends ModelBase {
 
     // STATIC METHODS
 
+    public static FlightDatum fromCSV(String csv) {
+        List<String> tokens = CsvReader.getTokens(csv);
+
+        if (tokens.size() < 8) throw new IllegalArgumentException("CSV line for FlightDatum should consist of 8 columns");
+
+        String icao = tokens.get(0);
+        double time = Double.parseDouble(tokens.get(1));
+        Double lat = doubleOrNull(tokens.get(2));
+        Double lon = doubleOrNull(tokens.get(3));
+        Double alt = doubleOrNull(tokens.get(4));
+        Double heading = doubleOrNull(tokens.get(5));
+        Double velo = doubleOrNull(tokens.get(6));
+        Double roc = doubleOrNull(tokens.get(7));
+
+        return new FlightDatum(icao, time, lon, lat, alt, heading, velo, roc);
+    }
+
+    private static Double doubleOrNull(String s) {
+        if (s.length() > 0) {
+            return Double.parseDouble(s);
+        }
+        return null;
+    }
+
     /**
      * Merges given flight data into one flight datum object. All the flight data should belong to the same aircraft
      * and timestamp.
@@ -187,5 +212,14 @@ public class FlightDatum extends ModelBase {
             sum += d; n++;
         }
         return n > 0 ? sum / n : null;
+    }
+
+    public int compareTo(FlightDatum other) {
+        if (this.icao.equals(other.icao)) {
+            if (this.time < other.time) return -1;
+            if (this.time > other.time) return +1;
+            return 0;
+        }
+        return this.icao.compareTo(other.icao);
     }
 }

@@ -147,16 +147,6 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
      * @return
      */
     public static SensorDatum fromCSV(String csv) {
-//        String[] tokens = csv.split(",");
-//
-//        if (tokens.length < 4) throw new IllegalArgumentException("CSV line for SensorDatum should consist of 7 columns");
-//
-//        double sensorLat = tokens[0].trim().length() == 0 ? Double.MIN_VALUE : Double.parseDouble(tokens[0]);
-//        double sensorLon = tokens[1].trim().length() == 0 ? Double.MIN_VALUE : Double.parseDouble(tokens[1]);
-//        double timeAtServer = Double.parseDouble(tokens[2]);
-//        String rawMessage = tokens[3];
-//        int sensorSerialNumber = Integer.parseInt(tokens[4]);
-
         List<String> tokens = CsvReader.getTokens(csv);
 
         if (tokens.size() < 5) throw new IllegalArgumentException("CSV line for SensorDatum should consist of 5 columns");

@@ -26,6 +26,13 @@ public class Flight extends ModelBase {
         return this.flightData;
     }
 
+    public double getDuration() {
+        if (flightData.isEmpty())
+            return 0;
+        else
+            return flightData.get(flightData.size() - 1).getTime() - flightData.get(0).getTime();
+    }
+
     public String toCSV() {
         String csv = null;
         if (!flightData.isEmpty()) {
