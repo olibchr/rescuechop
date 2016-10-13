@@ -81,7 +81,13 @@ public class Sampler {
             public Boolean call(Tuple2<String, Iterable<SensorDatum>> tuple) throws Exception {
                 for (SensorDatum sd: tuple._2) {
                     if (sd.getDecodedMessage() instanceof AltitudeReply) {
-                        if (((AltitudeReply) sd.getDecodedMessage()).getAltitude() > 3000) {
+                        AltitudeReply msg = (AltitudeReply) sd.getDecodedMessage();
+                        if (msg.getAltitude() != null && msg.getAltitude() > 3000) {
+                            return false;
+                        }
+                    } else if (sd.getDecodedMessage() instanceof CommBAltitudeReply) {
+                        CommBAltitudeReply msg = (CommBAltitudeReply) sd.getDecodedMessage();
+                        if (msg.getAltitude() != null && msg.getAltitude() > 3000) {
                             return false;
                         }
                     } else if (sd.getDecodedMessage() instanceof AirbornePositionMsg) {
