@@ -11,11 +11,13 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.api.java.function.PairFunction;
 import org.opensky.libadsb.Position;
 import scala.Tuple2;
 import vu.lsde.core.model.Flight;
 import vu.lsde.core.model.FlightDatum;
+import vu.lsde.core.model.SensorDatum;
 import vu.lsde.core.util.Util;
 
 import java.io.Serializable;
@@ -60,6 +62,7 @@ public class Flights {
             public Tuple2<String, Iterable<Flight>> call(Tuple2<String, Iterable<FlightDatum>> tuple) throws Exception {
                 String icao = tuple._1;
                 List<FlightDatum> flightDataList = Lists.newArrayList(tuple._2);
+                Collections.sort(flightDataList);
 
                 List<Flight> flights = new ArrayList<Flight>();
 

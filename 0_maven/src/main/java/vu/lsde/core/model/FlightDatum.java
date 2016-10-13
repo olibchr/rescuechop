@@ -166,9 +166,12 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
 
     public int compareTo(FlightDatum other) {
         if (this.icao.equals(other.icao)) {
-            if (this.time < other.time) return -1;
-            if (this.time > other.time) return +1;
-            return 0;
+            if (this.time < other.time)
+                return -1;
+            else if (this.time > other.time)
+                return +1;
+            else
+                return 0;
         }
         return this.icao.compareTo(other.icao);
     }
@@ -181,7 +184,8 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
         Object time = getTime();
         if (prettyTime) {
             Date date = new Date();
-            date.setTime((long) getTime() * 1000);
+
+            date.setTime(((long) getTime()) * 1000);
             time = DATE_TIME_FORMAT.format(date);
         }
         return super.toCSV(getIcao(), time, getLatitude(), getLongitude(), getAltitude(), getHeading(), getVelocity(), getRateOfClimb());

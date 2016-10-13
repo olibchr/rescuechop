@@ -14,6 +14,9 @@ import org.opensky.libadsb.msgs.ModeSReply;
 import org.opensky.libadsb.tools;
 import vu.lsde.core.io.CsvReader;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.List;
 
@@ -24,14 +27,14 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     private static final Logger LOG = LogManager.getLogger(SensorDatum.class);
     private static final double NULL_DOUBLE = Double.MIN_VALUE;
 
-    private final double sensorLatitude;
-    private final double sensorLongitude;
-    private final double timeAtServer;
-    private final String rawMessage;
-    private final int sensorSerialNumber;
+    private double sensorLatitude;
+    private double sensorLongitude;
+    private double timeAtServer;
+    private String rawMessage;
+    private int sensorSerialNumber;
 
-    private final ModeSReply decodedMessage;
-    private final String icao;
+    private transient ModeSReply decodedMessage;
+    private transient String icao;
 
     // CONSTRUCTOR
 
@@ -45,6 +48,10 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
         this.rawMessage = rawMessage;
         this.sensorSerialNumber = serialNumber;
 
+        init();
+    }
+
+    private void init() {
         ModeSReply decodedMessage;
         try {
             decodedMessage = Decoder.genericDecoder(rawMessage);
@@ -108,6 +115,26 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
             return 0;
         }
         return this.icao.compareTo(other.icao);
+    }
+
+    // SERIALIZABLE
+
+    private void writeObject(ObjectOutputStream stream) throws IOException {
+        stream.writeDouble(sensorLatitude);
+        stream.writeDouble(sensorLongitude);
+        stream.writeDouble(timeAtServer);
+        stream.writeObject(rawMessage);
+        stream.writeInt(sensorSerialNumber);
+    }
+
+    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        sensorLatitude = stream.readDouble();
+        sensorLongitude = stream.readDouble();
+        timeAtServer = stream.readDouble();
+        rawMessage = (String) stream.readObject();
+        sensorSerialNumber = stream.readInt();
+
+        init();
     }
 
     // HELP METHODS
