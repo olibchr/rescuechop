@@ -10,6 +10,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.storage.StorageLevel;
 import org.opensky.libadsb.msgs.*;
 import scala.Tuple2;
 import vu.lsde.core.Config;
@@ -36,36 +37,39 @@ public class Sampler {
 
         // Load records
         JavaRDD<GenericRecord> records = SparkAvroReader.loadJavaRDD(sc, inputPath, Config.OPEN_SKY_SCHEMA);
-        long recordsCount = records.count();
 
         // Map to model
         JavaRDD<SensorDatum> sensorData = records.map(new Function<GenericRecord, SensorDatum>() {
             public SensorDatum call(GenericRecord genericRecord) throws Exception {
                 return SensorDatum.fromGenericRecord(genericRecord);
             }
-        });
+        }).persist(StorageLevel.MEMORY_AND_DISK());
+        long inputRecordsCount = sensorData.count();
 
         // Filter out invalid messages
         sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
             public Boolean call(SensorDatum sensorDatum) throws Exception {
                 return sensorDatum.isValidMessage();
             }
-        }).cache();
+        }).persist(StorageLevel.MEMORY_AND_DISK());
         long validRecordsCount = sensorData.count();
 
-        // Filter out messages we won't use anyway (unknown extended squitters)
+        // Filter out messages we won't use anyway
         sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
             public Boolean call(SensorDatum sensorDatum) throws Exception {
-                ModeSReply msg = sensorDatum.getDecodedMessage();
-                if (msg instanceof ExtendedSquitter) {
-                    return (msg instanceof VelocityOverGroundMsg
-                            || msg instanceof AirbornePositionMsg
-                            || msg instanceof SurfacePositionMsg
-                            || msg instanceof AirspeedHeadingMsg);
+                switch(sensorDatum.getDecodedMessage().getType()) {
+                    case MODES_REPLY:
+                    case SHORT_ACAS:
+                    case LONG_ACAS:
+                    case EXTENDED_SQUITTER:
+                    case COMM_D_ELM:
+                    case ADSB_EMERGENCY:
+                    case ADSB_TCAS:
+                        return false;
                 }
                 return true;
             }
-        }).cache();
+        }).persist(StorageLevel.MEMORY_AND_DISK());
         long usefulRecordsCount = sensorData.count();
 
         // Group models by icao
@@ -73,7 +77,7 @@ public class Sampler {
             public String call(SensorDatum sensorDatum) {
                 return sensorDatum.getIcao();
             }
-        });
+        }).persist(StorageLevel.MEMORY_AND_DISK());
         long aircraftCount = sensorDataByAircraft.count();
 
         // Find aircraft flying lower than 3km
@@ -116,24 +120,24 @@ public class Sampler {
                 }
                 return true;
             }
-        });
+        }).cache();
         long potentialHelicoptersCount = possibleHelicopters.count();
 
         // Flatten
-        JavaRDD<SensorDatum> sample = Transformations.flatten(possibleHelicopters);
-        long potentialHelicopterMessagesCount = sample.count();
+        JavaRDD<SensorDatum> sample = Transformations.flatten(possibleHelicopters).cache();
+        long outputRecordsCount = sample.count();
 
         // To CSV
         Transformations.saveAsCsv(sample, outputPath);
 
         // Print statistics
         List<String> statistics = new ArrayList<String>();
-        statistics.add(numberOfItemsStatistic("raw records             ", recordsCount));
+        statistics.add(numberOfItemsStatistic("raw records             ", inputRecordsCount));
         statistics.add(numberOfItemsStatistic("valid records           ", validRecordsCount));
         statistics.add(numberOfItemsStatistic("useful records          ", usefulRecordsCount));
         statistics.add(numberOfItemsStatistic("unique aircraft         ", aircraftCount));
         statistics.add(numberOfItemsStatistic("potential helicopters   ", potentialHelicoptersCount));
-        statistics.add(numberOfItemsStatistic("messages in final sample", potentialHelicopterMessagesCount));
+        statistics.add(numberOfItemsStatistic("messages in final sample", outputRecordsCount));
         JavaRDD<String> statsRDD = sc.parallelize(statistics, 1);
         statsRDD.saveAsTextFile(outputPath + "_stats");
     }
