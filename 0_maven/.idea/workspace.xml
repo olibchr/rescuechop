@@ -39,11 +39,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Sampler.java" pinned="false" current-in-tab="true">
+      <file leaf-file-name="Sampler.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/jobs/Sampler.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="476">
-              <caret line="47" column="0" selection-start-line="47" selection-start-column="0" selection-end-line="47" selection-end-column="0" />
+            <state relative-caret-position="459">
+              <caret line="46" column="52" selection-start-line="46" selection-start-column="52" selection-end-line="46" selection-end-column="52" />
               <folding>
                 <element signature="e#1528#1749#0" expanded="true" />
                 <element signature="e#1748#1749#0" expanded="true" />
@@ -53,6 +53,16 @@
                 <element signature="e#5934#5935#0" expanded="true" />
                 <marker date="1476392779953" expanded="false" signature="6328:6336" ph="&lt;~&gt;" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="SensorDatum.java" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/core/model/SensorDatum.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1241">
+              <caret line="100" column="43" selection-start-line="100" selection-start-column="43" selection-end-line="100" selection-end-column="43" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -186,7 +196,6 @@
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/core/model/Flight.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/core/model/FlightDatum.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/core/model/PlotDatum.java" />
-        <option value="$PROJECT_DIR$/src/main/java/vu/lsde/core/model/SensorDatum.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/core/model/AircraftPosition.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/jobs/FlightsAnalyzer.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/core/model/ModelBase.java" />
@@ -200,6 +209,7 @@
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/jobs/BinaryToCsv.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/jobs/CsvToBinary.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/jobs/Sampler.java" />
+        <option value="$PROJECT_DIR$/src/main/java/vu/lsde/core/model/SensorDatum.java" />
       </list>
     </option>
   </component>
@@ -1007,7 +1017,7 @@
       <workItem from="1475747999517" duration="36682000" />
       <workItem from="1475839177716" duration="2237000" />
       <workItem from="1476209359617" duration="10711000" />
-      <workItem from="1476380262378" duration="8839000" />
+      <workItem from="1476380262378" duration="9827000" />
     </task>
     <servers />
   </component>
@@ -1044,7 +1054,7 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="66399000" />
+    <option name="totallyTimeSpent" value="67387000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
@@ -1339,14 +1349,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/core/model/SensorDatum.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="433">
-          <caret line="123" column="0" selection-start-line="123" selection-start-column="0" selection-end-line="123" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/core/model/AircraftPosition.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-451">
@@ -1472,8 +1474,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/jobs/Sampler.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="476">
-          <caret line="47" column="0" selection-start-line="47" selection-start-column="0" selection-end-line="47" selection-end-column="0" />
+        <state relative-caret-position="459">
+          <caret line="46" column="52" selection-start-line="46" selection-start-column="52" selection-end-line="46" selection-end-column="52" />
           <folding>
             <element signature="e#1528#1749#0" expanded="true" />
             <element signature="e#1748#1749#0" expanded="true" />
@@ -1483,6 +1485,14 @@
             <element signature="e#5934#5935#0" expanded="true" />
             <marker date="1476392779953" expanded="false" signature="6328:6336" ph="&lt;~&gt;" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/core/model/SensorDatum.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1241">
+          <caret line="100" column="43" selection-start-line="100" selection-start-column="43" selection-end-line="100" selection-end-column="43" />
+          <folding />
         </state>
       </provider>
     </entry>

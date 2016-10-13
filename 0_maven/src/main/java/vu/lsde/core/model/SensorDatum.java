@@ -25,14 +25,13 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     private double sensorLongitude;
     private double timeAtServer;
     private String rawMessage;
-    private int sensorSerialNumber;
 
     private transient ModeSReply decodedMessage;
     private transient String icao;
 
     // CONSTRUCTOR
 
-    public SensorDatum(Double sensorLatitude, Double sensorLongitude, double timeServer, String rawMessage, int serialNumber) {
+    public SensorDatum(Double sensorLatitude, Double sensorLongitude, double timeServer, String rawMessage) {
 
         if (rawMessage == null) throw new NullPointerException("rawMessage may not be null");
 
@@ -40,7 +39,6 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
         this.sensorLongitude = nullToNullDouble(sensorLongitude);
         this.timeAtServer = timeServer;
         this.rawMessage = rawMessage;
-        this.sensorSerialNumber = serialNumber;
 
         init();
     }
@@ -80,10 +78,6 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
         return this.rawMessage;
     }
 
-    public int getSensorSerialNumber() {
-        return this.sensorSerialNumber;
-    }
-
     public boolean isValidMessage() {
         return this.decodedMessage != null;
     }
@@ -100,7 +94,7 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
 
     @Override
     public String toCsv() {
-        return super.joinCsvColumns(getSensorLatitude(), getSensorLongitude(), getTimeAtServer(), getRawMessage(), getSensorSerialNumber());
+        return super.joinCsvColumns(getSensorLatitude(), getSensorLongitude(), getTimeAtServer(), getRawMessage());
     }
 
     public int compareTo(SensorDatum other) {
@@ -119,7 +113,6 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
         stream.writeDouble(sensorLongitude);
         stream.writeDouble(timeAtServer);
         stream.writeObject(rawMessage);
-        stream.writeInt(sensorSerialNumber);
     }
 
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
@@ -127,7 +120,6 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
         sensorLongitude = stream.readDouble();
         timeAtServer = stream.readDouble();
         rawMessage = (String) stream.readObject();
-        sensorSerialNumber = stream.readInt();
 
         init();
     }
@@ -146,8 +138,7 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
                 (Double) record.get("sensorLatitude"),
                 (Double) record.get("sensorLongitude"),
                 (Double) record.get("timeAtServer"),
-                (String) record.get("rawMessage"),
-                (Integer) record.get("sensorSerialNumber")
+                (String) record.get("rawMessage")
         );
     }
 
@@ -161,14 +152,13 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     public static SensorDatum fromCSV(String csv) {
         List<String> tokens = CsvReader.getTokens(csv);
 
-        if (tokens.size() < 5) throw new IllegalArgumentException("CSV line for SensorDatum should consist of 5 columns");
+        if (tokens.size() < 4) throw new IllegalArgumentException("CSV line for SensorDatum should consist of 5 columns");
 
         double sensorLat = tokens.get(0).length() == 0 ? NULL_DOUBLE : Double.parseDouble(tokens.get(0));
         double sensorLon = tokens.get(1).length() == 0 ? NULL_DOUBLE : Double.parseDouble(tokens.get(1));
         double timeAtServer = Double.parseDouble(tokens.get(2));
         String rawMessage = tokens.get(3);
-        int sensorSerialNumber = Integer.parseInt(tokens.get(4));
 
-        return new SensorDatum(sensorLat, sensorLon, timeAtServer, rawMessage, sensorSerialNumber);
+        return new SensorDatum(sensorLat, sensorLon, timeAtServer, rawMessage);
     }
 }
