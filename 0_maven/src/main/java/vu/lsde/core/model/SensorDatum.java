@@ -1,13 +1,9 @@
 package vu.lsde.core.model;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Splitter;
-import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.opensky.libadsb.Decoder;
-import org.opensky.libadsb.Position;
 import org.opensky.libadsb.exceptions.BadFormatException;
 import org.opensky.libadsb.exceptions.UnspecifiedFormatError;
 import org.opensky.libadsb.msgs.ModeSReply;
@@ -17,7 +13,6 @@ import vu.lsde.core.io.CsvReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -25,7 +20,6 @@ import java.util.List;
  */
 public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     private static final Logger LOG = LogManager.getLogger(SensorDatum.class);
-    private static final double NULL_DOUBLE = Double.MIN_VALUE;
 
     private double sensorLatitude;
     private double sensorLongitude;
@@ -104,8 +98,9 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
 
     // FUNCTIONS
 
-    public String toCSV() {
-        return super.toCSV(getSensorLatitude(), getSensorLongitude(), getTimeAtServer(), getRawMessage(), getSensorSerialNumber());
+    @Override
+    public String toCsv() {
+        return super.joinCsvColumns(getSensorLatitude(), getSensorLongitude(), getTimeAtServer(), getRawMessage(), getSensorSerialNumber());
     }
 
     public int compareTo(SensorDatum other) {
@@ -135,16 +130,6 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
         sensorSerialNumber = stream.readInt();
 
         init();
-    }
-
-    // HELP METHODS
-
-    private double nullToNullDouble(Double value) {
-        return value == null ? NULL_DOUBLE : value;
-    }
-
-    private Double nullDoubleToNull(double value) {
-        return value == NULL_DOUBLE ? null : value;
     }
 
     // STATIC

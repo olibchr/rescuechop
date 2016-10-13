@@ -28,9 +28,6 @@ import java.util.List;
 public class Sampler {
 
     public static void main(String[] args) throws IOException {
-        Logger log = LogManager.getLogger(Sampler.class);
-        log.setLevel(Level.INFO);
-
         String inputPath = args[0];
         String outputPath = args[1];
 
@@ -53,7 +50,7 @@ public class Sampler {
             public Boolean call(SensorDatum sensorDatum) throws Exception {
                 return sensorDatum.isValidMessage();
             }
-        });
+        }).cache();
         long validRecordsCount = sensorData.count();
 
         // Filter out messages we won't use anyway (unknown extended squitters)
@@ -117,21 +114,11 @@ public class Sampler {
         long potentialHelicoptersCount = possibleHelicopters.count();
 
         // Flatten
-        JavaRDD<SensorDatum> sample = possibleHelicopters.values().flatMap(new FlatMapFunction<Iterable<SensorDatum>, SensorDatum>() {
-            public Iterable<SensorDatum> call(Iterable<SensorDatum> sensorData) throws Exception {
-                return sensorData;
-            }
-        });
+        JavaRDD<SensorDatum> sample = Transformations.flatten(possibleHelicopters);
         long potentialHelicopterMessagesCount = sample.count();
 
         // To CSV
-        JavaRDD<String> sampleCSV = sample.map(new Function<SensorDatum, String>() {
-            public String call(SensorDatum sensorDatum) throws Exception {
-                return sensorDatum.toCSV();
-            }
-        });
-
-        sampleCSV.saveAsTextFile(outputPath);
+        Transformations.saveAsCsv(sample, outputPath);
 
         // Print statistics
         List<String> statistics = new ArrayList<String>();

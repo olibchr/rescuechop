@@ -176,7 +176,8 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
         return this.icao.compareTo(other.icao);
     }
 
-    public String toCSV() {
+    @Override
+    public String toCsv() {
         return toCSV(false);
     }
 
@@ -188,17 +189,7 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
             date.setTime(((long) getTime()) * 1000);
             time = DATE_TIME_FORMAT.format(date);
         }
-        return super.toCSV(getIcao(), time, getLatitude(), getLongitude(), getAltitude(), getHeading(), getVelocity(), getRateOfClimb());
-    }
-
-    // HELP METHODS
-
-    private double nullToNullDouble(Double value) {
-        return value == null ? NULL_DOUBLE : value;
-    }
-
-    private Double nullDoubleToNull(double value) {
-        return value == NULL_DOUBLE ? null : value;
+        return super.joinCsvColumns(getIcao(), time, getLatitude(), getLongitude(), getAltitude(), getHeading(), getVelocity(), getRateOfClimb());
     }
 
     // STATIC METHODS

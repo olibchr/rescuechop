@@ -6,8 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PlotDatum extends ModelBase implements Point {
-    private final static double NULL_DOUBLE = Double.MIN_VALUE;
-
     private String icao;
     private String flightID;
     private double time;
@@ -60,18 +58,9 @@ public class PlotDatum extends ModelBase implements Point {
 
     // CSV
 
-    public String toCSV() {
-        return super.toCSV(getFlightID(), getIcao(), getTime(), getLatitude(), getLongitude(), getAltitude());
-    }
-
-    // HELP METHODS
-
-    private double nullToNullDouble(Double value) {
-        return value == null ? NULL_DOUBLE : value;
-    }
-
-    private Double nullDoubleToNull(double value) {
-        return value == NULL_DOUBLE ? null : value;
+    @Override
+    public String toCsv() {
+        return super.joinCsvColumns(getFlightID(), getIcao(), getTime(), getLatitude(), getLongitude(), getAltitude());
     }
 
     // STATIC

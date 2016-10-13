@@ -30,29 +30,20 @@ import java.util.List;
 /**
  * Created by richa on 12/10/2016.
  */
-public class Analyzer {
+public class MessageTypeAnalyzer {
 
     public static void main(String[] args) throws IOException {
-        Logger log = LogManager.getLogger(FlightData.class);
-        log.setLevel(Level.INFO);
-
         String inputPath = args[0];
         String outputPath = args[1];
 
-        SparkConf sparkConf = new SparkConf().setAppName("LSDE09 Analyzer");
+        SparkConf sparkConf = new SparkConf().setAppName("LSDE09 MessageTypeAnalyzer");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
-        // Load CSV
-        JavaRDD<String> records = sc.textFile(inputPath);
-        long recordsCount = records.count();
+        // Load sensor data
+        JavaRDD<SensorDatum> sensorData = Transformations.readSensorDataCsv(sc, inputPath);
+        long recordsCount = sensorData.count();
 
-        // Parse CSV
-        JavaRDD<SensorDatum> sensorData = records.map(new Function<String, SensorDatum>() {
-            public SensorDatum call(String csv) throws Exception {
-                return SensorDatum.fromCSV(csv);
-            }
-        });
-
+        // Accumulators for counting
         final Accumulator<Integer> airPosMsgAcc = sc.accumulator(0);
         final Accumulator<Integer> airSpeedHeadingMsgAcc = sc.accumulator(0);
         final Accumulator<Integer> altReplyMsgAcc = sc.accumulator(0);
@@ -73,7 +64,7 @@ public class Analyzer {
         final Accumulator<Integer> invalidAcc = sc.accumulator(0);
         final Accumulator<Integer> extSquitterAcc = sc.accumulator(0);
 
-        // Filter position and velocity messages
+        // Count message types
         sensorData.foreach(new VoidFunction<SensorDatum>() {
             public void call(SensorDatum sd) {
                 ModeSReply msg = sd.getDecodedMessage();
@@ -120,26 +111,26 @@ public class Analyzer {
 
         // Print statistics
         List<String> statistics = new ArrayList<String>();
-        statistics.add(numberOfItemsStatistic("input records", recordsCount));
-        statistics.add(numberOfItemsStatistic("AirbornePositionMsg", airPosMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("AltitudeReply", altReplyMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("AirspeedHeadingMsg", airSpeedHeadingMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("CommBAltitudeReply", commBAltReplyAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("CommBIdentifyReply", commBIdentifyReplyAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("CommDExtendedLengthMsg", commDExtLengthMsgAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("input records               ", recordsCount));
+        statistics.add(numberOfItemsStatistic("AirbornePositionMsg         ", airPosMsgAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("AltitudeReply               ", altReplyMsgAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("AirspeedHeadingMsg          ", airSpeedHeadingMsgAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("CommBAltitudeReply          ", commBAltReplyAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("CommBIdentifyReply          ", commBIdentifyReplyAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("CommDExtendedLengthMsg      ", commDExtLengthMsgAcc.value(), recordsCount));
         statistics.add(numberOfItemsStatistic("EmergencyOrPriorityStatusMsg", emergOrPrioStatusMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("IdentificationMsg", idMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("IdentifyReply", idReplyAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("LongACAS", longAcasAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("MilitaryExtendedSquitter", militaryExtSquitterAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("OperationalStatusMsg", opStatusMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("ShortACAS", shortAcasAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("SurfacePositionMsg", surfPosMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("TCASResolutionAdvisoryMsg", tcasResolAdvMsg.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("VelocityOverGroundMsg", veloOverGrndMsg.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("Unspecific ExtendedSquitter", extSquitterAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("other", otherAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("invalid", invalidAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("IdentificationMsg           ", idMsgAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("IdentifyReply               ", idReplyAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("LongACAS                    ", longAcasAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("MilitaryExtendedSquitter    ", militaryExtSquitterAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("OperationalStatusMsg        ", opStatusMsgAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("ShortACAS                   ", shortAcasAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("SurfacePositionMsg          ", surfPosMsgAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("TCASResolutionAdvisoryMsg   ", tcasResolAdvMsg.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("VelocityOverGroundMsg       ", veloOverGrndMsg.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("Unknown ExtendedSquitter    ", extSquitterAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("other                       ", otherAcc.value(), recordsCount));
+        statistics.add(numberOfItemsStatistic("invalid                     ", invalidAcc.value(), recordsCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 

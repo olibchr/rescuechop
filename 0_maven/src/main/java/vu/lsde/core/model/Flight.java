@@ -42,17 +42,16 @@ public class Flight extends ModelBase {
             return getEndTime() - getStartTime();
     }
 
-    public List<String> toCSV() {
-        return this.toCSV(false);
+    @Override
+    public String toCsv() {
+        return toCSV(false);
     }
 
-    public List<String> toCSV(boolean prettyTime) {
+    public String toCSV(boolean prettyTime) {
         List<String> lines = new ArrayList<String>();
         for (FlightDatum fd : flightData) {
-            lines.add(toCSV(getID(), fd.toCSV(prettyTime)));
+            lines.add(joinCsvColumns(getID(), fd.toCSV(prettyTime)));
         }
-        return lines;
+        return joinCsvRows(lines);
     }
-
-
 }

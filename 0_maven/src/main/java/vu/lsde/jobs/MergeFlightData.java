@@ -4,7 +4,6 @@ import com.clearspring.analytics.util.Lists;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.Accumulator;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -13,7 +12,6 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
-import vu.lsde.core.model.Flight;
 import vu.lsde.core.model.FlightDatum;
 
 import java.util.ArrayList;
@@ -23,40 +21,22 @@ import java.util.List;
 public class MergeFlightData {
 
     public static void main(String[] args) {
-        Logger log = LogManager.getLogger(MergeFlightData.class);
-        log.setLevel(Level.INFO);
-
         String inputPath = args[0];
         String outputPath = args[1];
 
         SparkConf sparkConf = new SparkConf().setAppName("LSDE09 MergeFlightData");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
-        // Load CSV
-        JavaRDD<String> records = sc.textFile(inputPath);
-        long recordsCount = records.count();
-
-        // Map to model
-        JavaRDD<FlightDatum> flightData = records.map(new Function<String, FlightDatum>() {
-            public FlightDatum call(String s) throws Exception {
-                return FlightDatum.fromCSV(s);
-            }
-        });
-
-        // Group to pairs
-        JavaPairRDD<String, FlightDatum> pairs = flightData.mapToPair(new PairFunction<FlightDatum, String, FlightDatum>() {
-            public Tuple2<String, FlightDatum> call(FlightDatum flightDatum) throws Exception {
-                return new Tuple2<String, FlightDatum>(flightDatum.getIcao(), flightDatum);
-            }
-        });
+        // Load flight data
+        JavaRDD<FlightDatum> flightData = Transformations.readFlightDataCsv(sc, inputPath);
+        long recordsCount = flightData.count();
 
         // Group by aircraft
-//        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = flightData.groupBy(new Function<FlightDatum, String>() {
-//            public String call(FlightDatum flightDatum) throws Exception {
-//                return flightDatum.getIcao();
-//            }
-//        });
-        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = pairs.groupByKey();
+        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = flightData.groupBy(new Function<FlightDatum, String>() {
+            public String call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.getIcao();
+            }
+        });
 
         // Merge flight data that are from the same timestamp
         JavaPairRDD<String, Iterable<FlightDatum>> mergedFlightDataByAircraft = flightDataByAircraft.mapToPair(new PairFunction<Tuple2<String, Iterable<FlightDatum>>, String, Iterable<FlightDatum>>() {
@@ -71,22 +51,11 @@ public class MergeFlightData {
         });
 
         // Flatten
-        flightData = mergedFlightDataByAircraft.flatMap(new FlatMapFunction<Tuple2<String, Iterable<FlightDatum>>, FlightDatum>() {
-            public Iterable<FlightDatum> call(Tuple2<String, Iterable<FlightDatum>> stringListTuple2) throws Exception {
-                return stringListTuple2._2;
-            }
-        });
+        flightData = Transformations.flatten(mergedFlightDataByAircraft);
         long flightDataCount = flightData.count();
 
-        // To CSV
-        JavaRDD<String> csv = flightData.map(new Function<FlightDatum, String>() {
-            public String call(FlightDatum fd) throws Exception {
-                return fd.toCSV();
-            }
-        });
-
-        // To file
-        csv.saveAsTextFile(outputPath);
+        // Write to CSV
+        Transformations.saveAsCsv(flightData, outputPath);
 
         // Print statistics
         List<String> statistics = new ArrayList<String>();

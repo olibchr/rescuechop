@@ -4,7 +4,6 @@ import org.opensky.libadsb.Position;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 
 public class AircraftPosition extends ModelBase {
@@ -15,7 +14,6 @@ public class AircraftPosition extends ModelBase {
     private final double latitude;
     private final double longitude;
     private final double altitude;
-
 
     public AircraftPosition(String icao, double time, double latitude, double longitude, Double altitude) {
         this.icao = icao;
@@ -87,7 +85,8 @@ public class AircraftPosition extends ModelBase {
 
     // FUNCTIONS
 
-    public String toCSV() {
+    @Override
+    public String toCsv() {
         return this.toCSV(true);
     }
 
@@ -98,6 +97,6 @@ public class AircraftPosition extends ModelBase {
             date.setTime((long) getTime() * 1000);
             time = DATE_TIME_FORMAT.format(date);
         }
-        return super.toCSV(getIcao(), time, getLatitude(), getLongitude(), getAltitude());
+        return super.joinCsvColumns(getIcao(), time, getLatitude(), getLongitude(), getAltitude());
     }
 }

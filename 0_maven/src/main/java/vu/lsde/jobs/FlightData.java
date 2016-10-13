@@ -15,14 +15,12 @@ import org.opensky.libadsb.Position;
 import org.opensky.libadsb.PositionDecoder;
 import org.opensky.libadsb.msgs.*;
 import scala.Tuple2;
-import vu.lsde.core.model.AircraftPosition;
 import vu.lsde.core.model.FlightDatum;
 import vu.lsde.core.model.SensorDatum;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -31,25 +29,15 @@ import java.util.List;
 public class FlightData {
 
     public static void main(String[] args) throws IOException {
-        Logger log = LogManager.getLogger(FlightData.class);
-        log.setLevel(Level.INFO);
-
         String inputPath = args[0];
         String outputPath = args[1];
 
         SparkConf sparkConf = new SparkConf().setAppName("LSDE09 FlightData");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
-        // Load CSV
-        JavaRDD<String> records = sc.textFile(inputPath);
-        long recordsCount = records.count();
-
-        // Parse CSV
-        JavaRDD<SensorDatum> sensorData = records.map(new Function<String, SensorDatum>() {
-            public SensorDatum call(String csv) throws Exception {
-                return SensorDatum.fromCSV(csv);
-            }
-        });
+        // Load sensor data
+        JavaRDD<SensorDatum> sensorData = Transformations.readSensorDataCsv(sc, inputPath);
+        long recordsCount = sensorData.count();
 
         // Filter position and velocity messages
         sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
@@ -112,21 +100,10 @@ public class FlightData {
         long outputAircraftCount = flightDataByAircraft.keys().distinct().count();
 
         // Flatten
-        JavaRDD<FlightDatum> flightData = flightDataByAircraft.flatMap(new FlatMapFunction<Tuple2<String, Iterable<FlightDatum>>, FlightDatum>() {
-            public Iterable<FlightDatum> call(Tuple2<String, Iterable<FlightDatum>> t) throws Exception {
-                return t._2;
-            }
-        });
+        JavaRDD<FlightDatum> flightData = Transformations.flatten(flightDataByAircraft);
 
-        // To CSV
-        JavaRDD<String> flightDataCSV = flightData.map(new Function<FlightDatum, String>() {
-            public String call(FlightDatum fd) {
-                return fd.toCSV();
-            }
-        });
-
-        // To file
-        flightDataCSV.saveAsTextFile(outputPath);
+        // Write to CSV
+        Transformations.saveAsCsv(flightData, outputPath);
 
         // Get statistics on flight data
         long flightDataCount = flightData.count();
@@ -158,15 +135,15 @@ public class FlightData {
 
         // Print statistics
         List<String> statistics = new ArrayList<String>();
-        statistics.add(numberOfItemsStatistic("input records", recordsCount));
-        statistics.add(numberOfItemsStatistic("filtered records", filteredRecordsCount));
-        statistics.add(numberOfItemsStatistic("aircraft", outputAircraftCount));
+        statistics.add(numberOfItemsStatistic("input records     ", recordsCount));
+        statistics.add(numberOfItemsStatistic("filtered records  ", filteredRecordsCount));
+        statistics.add(numberOfItemsStatistic("aircraft          ", outputAircraftCount));
         statistics.add(numberOfItemsStatistic("output flight data", flightDataCount));
-        statistics.add(numberOfItemsStatistic("position data", positionDataCount, flightDataCount));
-        statistics.add(numberOfItemsStatistic("altitude data", altitudeDataCount, flightDataCount));
-        statistics.add(numberOfItemsStatistic("velocity data", velocityDataCount, flightDataCount));
+        statistics.add(numberOfItemsStatistic("position data     ", positionDataCount, flightDataCount));
+        statistics.add(numberOfItemsStatistic("altitude data     ", altitudeDataCount, flightDataCount));
+        statistics.add(numberOfItemsStatistic("velocity data     ", velocityDataCount, flightDataCount));
         statistics.add(numberOfItemsStatistic("rate of climb data", rocDataCount, flightDataCount));
-        statistics.add(numberOfItemsStatistic("heading data", headingDataCount, flightDataCount));
+        statistics.add(numberOfItemsStatistic("heading data      ", headingDataCount, flightDataCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 

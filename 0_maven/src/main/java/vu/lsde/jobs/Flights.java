@@ -5,6 +5,7 @@ import com.goebl.simplify.Simplify;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.apache.log4j.lf5.viewer.TrackingAdjustmentListener;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -38,16 +39,9 @@ public class Flights {
         SparkConf sparkConf = new SparkConf().setAppName("LSDE09 Flights");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
-        // Load CSV
-        JavaRDD<String> records = sc.textFile(inputPath);
-        long recordsCount = records.count();
-
-        // Map to model
-        final JavaRDD<FlightDatum> flightData = records.map(new Function<String, FlightDatum>() {
-            public FlightDatum call(String s) throws Exception {
-                return FlightDatum.fromCSV(s);
-            }
-        });
+        // Load flight data
+        final JavaRDD<FlightDatum> flightData = Transformations.readFlightDataCsv(sc, inputPath);
+        long recordsCount = flightData.count();
 
         // Group by aircraft
         JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = flightData.groupBy(new Function<FlightDatum, String>() {
@@ -88,11 +82,7 @@ public class Flights {
         });
 
         // Flatten
-        JavaRDD<Flight> flights = flightsByAircraft.flatMap(new FlatMapFunction<Tuple2<String, Iterable<Flight>>, Flight>() {
-            public Iterable<Flight> call(Tuple2<String, Iterable<Flight>> tuple) throws Exception {
-                return tuple._2;
-            }
-        }).cache();
+        JavaRDD<Flight> flights = Transformations.flatten(flightsByAircraft).cache();
         long initialFlightsCount = flights.count();
 
         // Filter flights that are too short
@@ -193,15 +183,8 @@ public class Flights {
         }).cache();
         long flightsCount = finalFlights.count();
 
-        // To CSV
-        JavaRDD<String> csv = finalFlights.flatMap(new FlatMapFunction<Flight, String>() {
-            public Iterable<String> call(Flight flight) throws Exception {
-                return flight.toCSV(true);
-            }
-        });
-
-        // To file
-        csv.saveAsTextFile(outputPath);
+        // Write to CSV
+        Transformations.saveAsCsv(finalFlights, outputPath);
 
         // Print statistics
         List<String> statistics = new ArrayList<String>();

@@ -58,21 +58,5 @@ public class SparkAvroReader {
     private static GenericRecord cloneAvroRecord(GenericRecord record) {
         GenericRecordBuilder builder = new GenericRecordBuilder((GenericData.Record) record);
         return builder.build();
-//        try {
-//
-//            Method newRecordBuilderMethod = record.getClass().getMethod("newBuilder", record.getClass());
-//            Object recordBuilderObject = newRecordBuilderMethod.invoke(null, record);
-//
-//            Method buildMethod = recordBuilderObject.getClass().getMethod("build");
-//            Object clonedRecord = buildMethod.invoke(recordBuilderObject);
-//
-//            return (GenericRecord) clonedRecord;
-//        } catch (NoSuchMethodException e) {
-//            throw new RuntimeException(e);
-//        } catch (IllegalAccessException e) {
-//            throw new RuntimeException(e);
-//        } catch (InvocationTargetException e) {
-//            throw new RuntimeException(e);
-//        }
     }
 }
