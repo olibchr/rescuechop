@@ -56,6 +56,21 @@ public class Sampler {
         });
         long validRecordsCount = sensorData.count();
 
+        // Filter out messages we won't use anyway (unknown extended squitters)
+        sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
+            public Boolean call(SensorDatum sensorDatum) throws Exception {
+                ModeSReply msg = sensorDatum.getDecodedMessage();
+                if (msg instanceof ExtendedSquitter) {
+                    return (msg instanceof VelocityOverGroundMsg
+                            || msg instanceof AirbornePositionMsg
+                            || msg instanceof SurfacePositionMsg
+                            || msg instanceof AirspeedHeadingMsg);
+                }
+                return true;
+            }
+        }).cache();
+        long usefulRecordsCount = sensorData.count();
+
         // Group models by icao
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData.groupBy(new Function<SensorDatum, String>() {
             public String call(SensorDatum sensorDatum) {
@@ -79,12 +94,12 @@ public class Sampler {
                         }
                     } else if (sd.getDecodedMessage() instanceof AirspeedHeadingMsg) {
                         AirspeedHeadingMsg msg = (AirspeedHeadingMsg) sd.getDecodedMessage();
-                        if (msg.hasAirspeedInfo() && msg.getAirspeed() > 120) {
+                        if (msg.hasAirspeedInfo() && msg.getAirspeed() > 90) {
                             return false;
                         }
                     } else if (sd.getDecodedMessage() instanceof VelocityOverGroundMsg) {
                         VelocityOverGroundMsg msg = (VelocityOverGroundMsg) sd.getDecodedMessage();
-                        if (msg.hasVelocityInfo() && msg.getVelocity() > 120) {
+                        if (msg.hasVelocityInfo() && msg.getVelocity() > 90) {
                             return false;
                         }
                     } else if (sd.getDecodedMessage() instanceof IdentificationMsg) {
@@ -92,6 +107,8 @@ public class Sampler {
                         if (msg.getEmitterCategory() != 0 && !msg.getCategoryDescription().equals("Rotorcraft")) {
                             return false;
                         }
+                    } else if (sd.getDecodedMessage() instanceof MilitaryExtendedSquitter) {
+                        return false;
                     }
                 }
                 return true;
@@ -118,12 +135,13 @@ public class Sampler {
 
         // Print statistics
         List<String> statistics = new ArrayList<String>();
-        statistics.add(numberOfItemsStatistic("raw records", recordsCount));
-        statistics.add(numberOfItemsStatistic("valid records", validRecordsCount));
-        statistics.add(numberOfItemsStatistic("unique aircraft", aircraftCount));
-        statistics.add(numberOfItemsStatistic("potential helicopters", potentialHelicoptersCount));
+        statistics.add(numberOfItemsStatistic("raw records             ", recordsCount));
+        statistics.add(numberOfItemsStatistic("valid records           ", validRecordsCount));
+        statistics.add(numberOfItemsStatistic("useful records          ", usefulRecordsCount));
+        statistics.add(numberOfItemsStatistic("unique aircraft         ", aircraftCount));
+        statistics.add(numberOfItemsStatistic("potential helicopters   ", potentialHelicoptersCount));
         statistics.add(numberOfItemsStatistic("messages in final sample", potentialHelicopterMessagesCount));
-        JavaRDD<String> statsRDD = sc.parallelize(statistics).coalesce(1);
+        JavaRDD<String> statsRDD = sc.parallelize(statistics, 1);
         statsRDD.saveAsTextFile(outputPath + "_stats");
     }
 

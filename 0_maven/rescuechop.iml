@@ -147,5 +147,6 @@
     <orderEntry type="library" name="Maven: org.opensky-network:libadsb:2.0" level="project" />
     <orderEntry type="library" name="Maven: commons-lang:commons-lang:2.3" level="project" />
     <orderEntry type="library" name="Maven: com.google.guava:guava:19.0" level="project" />
+    <orderEntry type="library" name="Maven: com.goebl:simplify:1.0.0" level="project" />
   </component>
 </module>

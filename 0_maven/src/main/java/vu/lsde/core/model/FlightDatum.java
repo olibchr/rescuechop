@@ -105,6 +105,33 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
         return nullDoubleToNull(rateOfClimb);
     }
 
+    public Position getPosition() {
+        if (getLatitude() == null || getLongitude() == null)
+            return null;
+        else
+            return new Position(getLongitude(), getLatitude(), getAltitude());
+    }
+
+    public boolean hasPosition() {
+        return getLatitude() != null && getLongitude() != null;
+    }
+
+    public boolean hasAltitude() {
+        return getAltitude() != null;
+    }
+
+    public boolean hasHeading() {
+        return getHeading() != null;
+    }
+
+    public boolean hasVelocity() {
+        return getVelocity() != null;
+    }
+
+    public boolean hasRateOfClimb() {
+        return getRateOfClimb() != null;
+    }
+
     // INSTANCE METHODS
 
     public FlightDatum extend(FlightDatum other) {

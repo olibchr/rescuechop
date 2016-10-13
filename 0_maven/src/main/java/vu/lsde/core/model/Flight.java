@@ -1,5 +1,6 @@
 package vu.lsde.core.model;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,23 +27,32 @@ public class Flight extends ModelBase {
         return this.flightData;
     }
 
+    public double getStartTime() {
+        return flightData.get(0).getTime();
+    }
+
+    public double getEndTime() {
+        return flightData.get(flightData.size() - 1).getTime();
+    }
+
     public double getDuration() {
         if (flightData.isEmpty())
             return 0;
         else
-            return flightData.get(flightData.size() - 1).getTime() - flightData.get(0).getTime();
+            return getEndTime() - getStartTime();
     }
 
-    public String toCSV() {
-        String csv = null;
-        if (!flightData.isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < flightData.size() - 1; i++) {
-                sb.append(flightData.get(i).toCSV()).append('\n');
-            }
-            sb.append(flightData.get(flightData.size() - 1).toCSV());
-            csv = sb.toString();
-        }
-        return csv;
+    public List<String> toCSV() {
+        return this.toCSV(false);
     }
+
+    public List<String> toCSV(boolean prettyTime) {
+        List<String> lines = new ArrayList<String>();
+        for (FlightDatum fd : flightData) {
+            lines.add(toCSV(getID(), fd.toCSV(prettyTime)));
+        }
+        return lines;
+    }
+
+
 }
