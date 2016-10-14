@@ -76,7 +76,7 @@ public class Transformations {
                 Iterable<String> lines = tuple._2;
                 int startFlightDatum = id.length() + 1;
 
-                SortedSet<FlightDatum> flightData = new TreeSet<FlightDatum>();
+                SortedSet<FlightDatum> flightData = new TreeSet<>();
                 for (String line : lines) {
                     flightData.add(FlightDatum.fromCSV(line.substring(startFlightDatum)));
                 }

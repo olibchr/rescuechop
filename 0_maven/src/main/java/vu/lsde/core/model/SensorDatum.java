@@ -47,9 +47,7 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
         ModeSReply decodedMessage;
         try {
             decodedMessage = Decoder.genericDecoder(rawMessage);
-        } catch (BadFormatException e) {
-            decodedMessage = null;
-        } catch (UnspecifiedFormatError e) {
+        } catch (BadFormatException | UnspecifiedFormatError e) {
             decodedMessage = null;
         } catch (ArrayIndexOutOfBoundsException e) {
             // Somehow this happens. I don't know why, but it happens. Log it and go on with life.
@@ -97,6 +95,7 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
         return super.joinCsvColumns(getSensorLatitude(), getSensorLongitude(), getTimeAtServer(), getRawMessage());
     }
 
+    @Override
     public int compareTo(SensorDatum other) {
         if (this.icao.equals(other.icao)) {
             if (this.timeAtServer < other.timeAtServer) return -1;

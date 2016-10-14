@@ -49,7 +49,7 @@ public class Flight extends ModelBase {
     }
 
     public String toCSV(boolean prettyTime) {
-        List<String> lines = new ArrayList<String>();
+        List<String> lines = new ArrayList<>();
         for (FlightDatum fd : flightData) {
             lines.add(joinCsvColumns(getID(), fd.toCSV(prettyTime)));
         }

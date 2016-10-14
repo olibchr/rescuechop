@@ -45,7 +45,9 @@ public class FlightData {
                 return sd.getDecodedMessage() instanceof AirbornePositionMsg
                     || sd.getDecodedMessage() instanceof SurfacePositionMsg
                     || sd.getDecodedMessage() instanceof AirspeedHeadingMsg
-                    || sd.getDecodedMessage() instanceof VelocityOverGroundMsg;
+                    || sd.getDecodedMessage() instanceof VelocityOverGroundMsg
+                    || sd.getDecodedMessage() instanceof AltitudeReply
+                    || sd.getDecodedMessage() instanceof CommBAltitudeReply;
             }
         });
         long filteredRecordsCount = sensorData.count();
@@ -69,7 +71,7 @@ public class FlightData {
 
                 // Decode positions
                 PositionDecoder decoder = new PositionDecoder();
-                List<FlightDatum> flightData = new ArrayList<FlightDatum>();
+                List<FlightDatum> flightData = new ArrayList<>();
                 for (SensorDatum sd : sensorDataList) {
                     ModeSReply message = sd.getDecodedMessage();
 
@@ -85,7 +87,7 @@ public class FlightData {
                         if (position != null && position.isReasonable()) {
                             flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), position));
                         }
-                    } else {
+                    } else if (message instanceof AirspeedHeadingMsg || message instanceof VelocityOverGroundMsg){
                         if (message instanceof AirspeedHeadingMsg) {
                             flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), (AirspeedHeadingMsg) message));
                         } else {
