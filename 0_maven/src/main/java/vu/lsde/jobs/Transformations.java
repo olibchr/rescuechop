@@ -13,6 +13,8 @@ import vu.lsde.core.model.SensorDatum;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 /**
  * Utility class that contains functions for RDDs that are often used in various jobs.
@@ -74,11 +76,11 @@ public class Transformations {
                 Iterable<String> lines = tuple._2;
                 int startFlightDatum = id.length() + 1;
 
-                List<FlightDatum> flightData = new ArrayList<FlightDatum>();
+                SortedSet<FlightDatum> flightData = new TreeSet<FlightDatum>();
                 for (String line : lines) {
                     flightData.add(FlightDatum.fromCSV(line.substring(startFlightDatum)));
                 }
-                String icao = flightData.get(0).getIcao();
+                String icao = flightData.first().getIcao();
 
                 return new Flight(icao, flightData);
             }

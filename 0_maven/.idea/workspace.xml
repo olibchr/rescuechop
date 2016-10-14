@@ -22,7 +22,7 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="Sampler.java" pinned="false" current-in-tab="true">
+      <file leaf-file-name="Sampler.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/jobs/Sampler.java">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="217">
@@ -45,11 +45,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Transformations.java" pinned="false" current-in-tab="false">
+      <file leaf-file-name="Transformations.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/jobs/Transformations.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="132">
-              <caret line="18" column="3" selection-start-line="18" selection-start-column="3" selection-end-line="18" selection-end-column="3" />
+            <state relative-caret-position="660">
+              <caret line="76" column="55" selection-start-line="76" selection-start-column="55" selection-end-line="76" selection-end-column="55" />
               <folding />
             </state>
           </provider>
@@ -153,11 +153,11 @@
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/jobs/BinaryToCsv.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/jobs/CsvToBinary.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/core/model/SensorDatum.java" />
-        <option value="$PROJECT_DIR$/src/main/java/vu/lsde/jobs/Transformations.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/core/model/FlightDatum.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/core/model/Flight.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/jobs/Flights.java" />
         <option value="$PROJECT_DIR$/src/main/java/vu/lsde/jobs/Sampler.java" />
+        <option value="$PROJECT_DIR$/src/main/java/vu/lsde/jobs/Transformations.java" />
       </list>
     </option>
   </component>
@@ -966,7 +966,7 @@
       <workItem from="1475839177716" duration="2237000" />
       <workItem from="1476209359617" duration="10711000" />
       <workItem from="1476380262378" duration="9827000" />
-      <workItem from="1476444808322" duration="2607000" />
+      <workItem from="1476444808322" duration="2811000" />
     </task>
     <servers />
   </component>
@@ -1003,7 +1003,7 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="69994000" />
+    <option name="totallyTimeSpent" value="70198000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-9" y="-9" width="2418" height="1318" extended-state="6" />
@@ -1330,14 +1330,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/jobs/Transformations.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="132">
-          <caret line="18" column="3" selection-start-line="18" selection-start-column="3" selection-end-line="18" selection-end-column="3" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/core/model/SensorDatum.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1474">
@@ -1419,6 +1411,14 @@
             <element signature="e#1654#1875#0" expanded="true" />
             <element signature="e#1874#1875#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/jobs/Transformations.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="660">
+          <caret line="76" column="55" selection-start-line="76" selection-start-column="55" selection-end-line="76" selection-end-column="55" />
+          <folding />
         </state>
       </provider>
     </entry>
