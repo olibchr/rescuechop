@@ -61,12 +61,12 @@ public class Flights {
                 List<Flight> flights = new ArrayList<Flight>();
 
                 // First do a rough grouping merely on time
-                List<FlightDatum> lastFlightData = new ArrayList<FlightDatum>();
+                SortedSet<FlightDatum> lastFlightData = new TreeSet<FlightDatum>();
                 double lastTime = flightDataList.get(0).getTime();
                 for (FlightDatum fd : flightDataList) {
                     if (fd.getTime() - lastTime >= MIN_TIME_DELTA) {
                         Flight flight = new Flight(icao, lastFlightData);
-                        lastFlightData.clear();
+                        lastFlightData = new TreeSet<FlightDatum>();
                         flights.add(flight);
                     }
                     lastFlightData.add(fd);
@@ -159,13 +159,13 @@ public class Flights {
                 if (splitTimes.isEmpty()) {
                     splitFlights.add(flight);
                 } else {
-                    List<FlightDatum> lastFlightData = new ArrayList<FlightDatum>();
+                    SortedSet<FlightDatum> lastFlightData = new TreeSet<FlightDatum>();
                     double time = splitTimes.get(0);
                     splitTimes.remove(0);
                     for (FlightDatum fd : flight.getFlightData()) {
                         if (fd.getTime() == time) {
                             splitFlights.add(new Flight(flight.getIcao(), lastFlightData));
-                            lastFlightData.clear();
+                            lastFlightData = new TreeSet<FlightDatum>();
                             if (!splitTimes.isEmpty()) {
                                 time = splitTimes.get(0);
                                 splitTimes.remove(0);

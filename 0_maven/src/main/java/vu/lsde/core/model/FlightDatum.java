@@ -165,15 +165,29 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
     }
 
     public int compareTo(FlightDatum other) {
-        if (this.icao.equals(other.icao)) {
-            if (this.time < other.time)
-                return -1;
-            else if (this.time > other.time)
-                return +1;
-            else
-                return 0;
-        }
-        return this.icao.compareTo(other.icao);
+        int result = this.icao.compareTo(other.icao);
+        if (result != 0)
+            return result;
+        result = Double.compare(this.time, other.time);
+        if (result != 0)
+            return result;
+        // any comparing from this point is just to make compareTo consistent with equals
+        result = Double.compare(this.longitude, other.longitude);
+        if (result != 0)
+            return result;
+        result = Double.compare(this.latitude, other.latitude);
+        if (result != 0)
+            return result;
+        result = Double.compare(this.altitude, other.altitude);
+        if (result != 0)
+            return result;
+        result = Double.compare(this.heading, other.heading);
+        if (result != 0)
+            return result;
+        result = Double.compare(this.velocity, other.velocity);
+        if (result != 0)
+            return result;
+        return Double.compare(this.rateOfClimb, other.rateOfClimb);
     }
 
     @Override

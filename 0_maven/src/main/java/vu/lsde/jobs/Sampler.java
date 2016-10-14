@@ -32,7 +32,9 @@ public class Sampler {
         String inputPath = args[0];
         String outputPath = args[1];
 
-        SparkConf sparkConf = new SparkConf().setAppName("LSDE09 Sampler");
+        SparkConf sparkConf = new SparkConf().setAppName("LSDE09 Sampler")
+                .set("spark.shuffle.service.enabled", "true")
+                .set("spark.dynamicAllocation.enabled", "true");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Load records

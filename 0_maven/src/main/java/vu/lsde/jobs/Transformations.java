@@ -14,8 +14,18 @@ import vu.lsde.core.model.SensorDatum;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Utility class that contains functions for RDDs that are often used in various jobs.
+ */
 public class Transformations {
 
+    /**
+     * Loads SensorDatum objects from a CSV encoded file into an RDD
+     *
+     * @param sc
+     * @param inputPath
+     * @return
+     */
     public static JavaRDD<SensorDatum> readSensorDataCsv(JavaSparkContext sc, String inputPath) {
         return sc.textFile(inputPath).map(new Function<String, SensorDatum>() {
             public SensorDatum call(String s) throws Exception {
@@ -24,6 +34,13 @@ public class Transformations {
         });
     }
 
+    /**
+     * Loads FlightDatum objects from a CSV encoded file into an RDD
+     *
+     * @param sc
+     * @param inputPath
+     * @return
+     */
     public static JavaRDD<FlightDatum> readFlightDataCsv(JavaSparkContext sc, String inputPath) {
         return sc.textFile(inputPath).map(new Function<String, FlightDatum>() {
             public FlightDatum call(String s) throws Exception {
@@ -32,6 +49,12 @@ public class Transformations {
         });
     }
 
+    /**
+     * Loads Flight objects from a CSV encoded file into an RDD
+     * @param sc
+     * @param inputPath
+     * @return
+     */
     public static JavaRDD<Flight> readFlightsCsv(JavaSparkContext sc, String inputPath) {
         // Records
         JavaRDD<String> lines = sc.textFile(inputPath);
@@ -62,6 +85,13 @@ public class Transformations {
         });
     }
 
+    /**
+     * Flatten an RDD containing iterables.
+     *
+     * @param bags
+     * @param <T>
+     * @return
+     */
     public static <T> JavaRDD<T> flatten(JavaRDD<Iterable<T>> bags) {
         return bags.flatMap(new FlatMapFunction<Iterable<T>, T>() {
             public Iterable<T> call(Iterable<T> ts) throws Exception {
@@ -70,6 +100,14 @@ public class Transformations {
         });
     }
 
+    /**
+     * Flatten a PairRDD containing iterable values.
+     *
+     * @param groups
+     * @param <S>
+     * @param <T>
+     * @return
+     */
     public static <S, T> JavaRDD<T> flatten(JavaPairRDD<S, Iterable<T>> groups) {
         return groups.values().flatMap(new FlatMapFunction<Iterable<T>, T>() {
             public Iterable<T> call(Iterable<T> ts) throws Exception {
@@ -78,6 +116,13 @@ public class Transformations {
         });
     }
 
+    /**
+     * Save an RDD containing model objects as a CSV file.
+     *
+     * @param models
+     * @param outputPath
+     * @param <T>
+     */
     public static <T extends ModelBase> void saveAsCsv(JavaRDD<T> models, String outputPath) {
         models.map(new Function<T, String>() {
             public String call(T modelBase) throws Exception {

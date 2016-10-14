@@ -2,14 +2,15 @@ package vu.lsde.core.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedSet;
 import java.util.UUID;
 
 public class Flight extends ModelBase {
     private final String id;
     private final String icao;
-    private final List<FlightDatum> flightData;
+    private final SortedSet<FlightDatum> flightData;
 
-    public Flight(String icao, List<FlightDatum> flightData) {
+    public Flight(String icao, SortedSet<FlightDatum> flightData) {
         this.id = UUID.randomUUID().toString();
         this.icao = icao;
         this.flightData = flightData;
@@ -23,16 +24,16 @@ public class Flight extends ModelBase {
         return this.icao;
     }
 
-    public List<FlightDatum> getFlightData() {
+    public SortedSet<FlightDatum> getFlightData() {
         return this.flightData;
     }
 
     public double getStartTime() {
-        return flightData.get(0).getTime();
+        return flightData.first().getTime();
     }
 
     public double getEndTime() {
-        return flightData.get(flightData.size() - 1).getTime();
+        return flightData.last().getTime();
     }
 
     public double getDuration() {
