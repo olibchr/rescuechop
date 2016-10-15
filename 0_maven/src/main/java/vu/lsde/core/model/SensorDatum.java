@@ -19,8 +19,6 @@ import java.util.List;
  * Immutable object representing one datum from a Mode S sensor.
  */
 public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
-    private static final Logger LOG = LogManager.getLogger(SensorDatum.class);
-
     private double sensorLatitude;
     private double sensorLongitude;
     private double timeAtServer;
@@ -47,11 +45,7 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
         ModeSReply decodedMessage;
         try {
             decodedMessage = Decoder.genericDecoder(rawMessage);
-        } catch (BadFormatException | UnspecifiedFormatError e) {
-            decodedMessage = null;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            // Somehow this happens. I don't know why, but it happens. Log it and go on with life.
-            LOG.warn("could not decode raw message due to ArrayIndexOutOfBoundsException", e);
+        } catch (BadFormatException | UnspecifiedFormatError | ArrayIndexOutOfBoundsException e) {
             decodedMessage = null;
         }
         this.decodedMessage = decodedMessage;
@@ -151,7 +145,7 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     public static SensorDatum fromCSV(String csv) {
         List<String> tokens = CsvReader.getTokens(csv);
 
-        if (tokens.size() < 4) throw new IllegalArgumentException("CSV line for SensorDatum should consist of 5 columns");
+        if (tokens.size() < 4) throw new IllegalArgumentException("CSV line for SensorDatum should consist of 4 columns");
 
         double sensorLat = tokens.get(0).length() == 0 ? NULL_DOUBLE : Double.parseDouble(tokens.get(0));
         double sensorLon = tokens.get(1).length() == 0 ? NULL_DOUBLE : Double.parseDouble(tokens.get(1));

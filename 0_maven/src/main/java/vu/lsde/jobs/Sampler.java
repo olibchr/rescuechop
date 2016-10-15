@@ -44,7 +44,7 @@ public class Sampler {
             public SensorDatum call(GenericRecord genericRecord) throws Exception {
                 return SensorDatum.fromGenericRecord(genericRecord);
             }
-        }).persist(StorageLevel.MEMORY_AND_DISK());
+        });//.persist(StorageLevel.MEMORY_AND_DISK());
         long inputRecordsCount = -1; //sensorData.count();
 
         // Filter out invalid messages
@@ -52,7 +52,7 @@ public class Sampler {
             public Boolean call(SensorDatum sensorDatum) throws Exception {
                 return sensorDatum.isValidMessage();
             }
-        }).persist(StorageLevel.MEMORY_AND_DISK());
+        });//.persist(StorageLevel.MEMORY_AND_DISK());
         long validRecordsCount = -1; //sensorData.count();
 
         // Filter out messages we won't use anyway
@@ -70,7 +70,7 @@ public class Sampler {
                 }
                 return true;
             }
-        }).persist(StorageLevel.MEMORY_AND_DISK());
+        });//.persist(StorageLevel.MEMORY_AND_DISK());
         long usefulRecordsCount = -1;//sensorData.count();
 
         // Group models by icao
@@ -78,33 +78,38 @@ public class Sampler {
             public String call(SensorDatum sensorDatum) {
                 return sensorDatum.getIcao();
             }
-        }).persist(StorageLevel.MEMORY_AND_DISK());
+        });//.persist(StorageLevel.MEMORY_AND_DISK());
         long aircraftCount = -1;//sensorDataByAircraft.count();
 
         // Find aircraft flying lower than 3km
         JavaPairRDD<String, Iterable<SensorDatum>> possibleHelicopters = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
             public Boolean call(Tuple2<String, Iterable<SensorDatum>> tuple) throws Exception {
+                int airborneMsgCount = 0;
                 for (SensorDatum sd: tuple._2) {
                     if (sd.getDecodedMessage() instanceof AltitudeReply) {
                         AltitudeReply msg = (AltitudeReply) sd.getDecodedMessage();
                         if (msg.getAltitude() != null && msg.getAltitude() > 3000) {
                             return false;
                         }
+                        airborneMsgCount++;
                     } else if (sd.getDecodedMessage() instanceof CommBAltitudeReply) {
                         CommBAltitudeReply msg = (CommBAltitudeReply) sd.getDecodedMessage();
                         if (msg.getAltitude() != null && msg.getAltitude() > 3000) {
                             return false;
                         }
+                        airborneMsgCount++;
                     } else if (sd.getDecodedMessage() instanceof AirbornePositionMsg) {
                         AirbornePositionMsg msg = (AirbornePositionMsg) sd.getDecodedMessage();
                         if (msg.hasAltitude() && msg.getAltitude() > 3000) {
                             return false;
                         }
+                        airborneMsgCount++;
                     } else if (sd.getDecodedMessage() instanceof AirspeedHeadingMsg) {
                         AirspeedHeadingMsg msg = (AirspeedHeadingMsg) sd.getDecodedMessage();
                         if (msg.hasAirspeedInfo() && msg.getAirspeed() > 90) {
                             return false;
                         }
+                        airborneMsgCount++;
                     } else if (sd.getDecodedMessage() instanceof VelocityOverGroundMsg) {
                         VelocityOverGroundMsg msg = (VelocityOverGroundMsg) sd.getDecodedMessage();
                         if (msg.hasVelocityInfo() && msg.getVelocity() > 90) {
@@ -119,7 +124,7 @@ public class Sampler {
                         return false;
                     }
                 }
-                return true;
+                return airborneMsgCount > 0;
             }
         });//.cache();
         long potentialHelicoptersCount = -1;//possibleHelicopters.count();

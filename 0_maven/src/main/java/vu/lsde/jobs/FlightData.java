@@ -137,11 +137,6 @@ public class FlightData {
                 return flightDatum.getRateOfClimb() != null;
             }
         }).count();
-        long headingDataCount = flightData.filter(new Function<FlightDatum, Boolean>() {
-            public Boolean call(FlightDatum flightDatum) throws Exception {
-                return flightDatum.getHeading() != null;
-            }
-        }).count();
 
         // Print statistics
         List<String> statistics = new ArrayList<String>();
@@ -153,7 +148,6 @@ public class FlightData {
         statistics.add(numberOfItemsStatistic("altitude data     ", altitudeDataCount, flightDataCount));
         statistics.add(numberOfItemsStatistic("velocity data     ", velocityDataCount, flightDataCount));
         statistics.add(numberOfItemsStatistic("rate of climb data", rocDataCount, flightDataCount));
-        statistics.add(numberOfItemsStatistic("heading data      ", headingDataCount, flightDataCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 

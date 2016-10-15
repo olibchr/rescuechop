@@ -5,9 +5,12 @@ import org.opensky.libadsb.exceptions.MissingInformationException;
 import org.opensky.libadsb.msgs.AirspeedHeadingMsg;
 import org.opensky.libadsb.msgs.VelocityOverGroundMsg;
 import vu.lsde.core.io.CsvReader;
+import vu.lsde.core.util.Geo;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -22,31 +25,29 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
     private double longitude;
     private double latitude;
     private double altitude;
-    private double heading;
     private double velocity;
     private double rateOfClimb;
 
     // CONSTRUCTORS
 
-    public FlightDatum(String icao, double time, Double lon, Double lat, Double alt, Double heading, Double velo, Double roc) {
-        init(icao, time, lon, lat, alt, heading, velo, roc);
+    public FlightDatum(String icao, double time, Double lon, Double lat, Double alt, Double velo, Double roc) {
+        init(icao, time, lon, lat, alt, velo, roc);
     }
 
     public FlightDatum(String icao, double time, Position pos) {
-        init(icao, time, pos.getLongitude(), pos.getLatitude(), pos.getAltitude(), null, null, null);
+        init(icao, time, pos.getLongitude(), pos.getLatitude(), pos.getAltitude(), null, null);
     }
 
     public FlightDatum(String icao, double time, double altitude) {
-        init(icao, time, null, null, altitude, null, null, null);
+        init(icao, time, null, null, altitude, null, null);
     }
 
     public FlightDatum(String icao, double time, AirspeedHeadingMsg msg) {
         try {
-            Double heading = msg.hasHeadingInfo() ? msg.getHeading() : null;
             Double velocity = msg.hasAirspeedInfo() ? msg.getAirspeed() : null;
             Double roc = msg.hasVerticalRateInfo() ? msg.getVerticalRate() : null;
 
-            init(icao, time, null, null, null, heading, velocity, roc);
+            init(icao, time, null, null, null, velocity, roc);
         } catch (MissingInformationException e) {
             throw new RuntimeException(e);
         }
@@ -54,23 +55,21 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
 
     public FlightDatum(String icao, double time, VelocityOverGroundMsg msg) {
         try {
-            Double heading = msg.hasVelocityInfo() ? msg.getHeading() : null;
             Double velocity = msg.hasVelocityInfo() ? msg.getVelocity() : null;
             Double roc = msg.hasVerticalRateInfo() ? msg.getVerticalRate() : null;
 
-            init(icao, time, null, null, null, heading, velocity, roc);
+            init(icao, time, null, null, null, velocity, roc);
         } catch (MissingInformationException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void init(String icao, double time, Double lon, Double lat, Double alt, Double heading, Double velo, Double roc) {
+    private void init(String icao, double time, Double lon, Double lat, Double alt, Double velo, Double roc) {
         this.icao = icao;
         this.time = time;
         this.longitude = nullToNullDouble(lon);
         this.latitude = nullToNullDouble(lat);
         this.altitude = nullToNullDouble(alt);
-        this.heading = nullToNullDouble(heading);
         this.velocity = nullToNullDouble(velo);
         this.rateOfClimb = nullToNullDouble(roc);
     }
@@ -97,10 +96,6 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
         return nullDoubleToNull(altitude);
     }
 
-    public Double getHeading() {
-        return nullDoubleToNull(heading);
-    }
-
     public Double getVelocity() {
         return nullDoubleToNull(velocity);
     }
@@ -124,10 +119,6 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
         return getAltitude() != null;
     }
 
-    public boolean hasHeading() {
-        return getHeading() != null;
-    }
-
     public boolean hasVelocity() {
         return getVelocity() != null;
     }
@@ -146,7 +137,6 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
                     firstNonNull(this.getLongitude(), other.getLongitude()),
                     firstNonNull(this.getLatitude(), other.getLatitude()),
                     firstNonNull(this.getAltitude(), other.getAltitude()),
-                    firstNonNull(this.getHeading(), other.getHeading()),
                     firstNonNull(this.getVelocity(), other.getVelocity()),
                     firstNonNull(this.getRateOfClimb(), other.getRateOfClimb()));
         }
@@ -161,7 +151,6 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
                     && this.longitude == o.longitude
                     && this.latitude == o.latitude
                     && this.altitude == o.altitude
-                    && this.heading == o.heading
                     && this.velocity == o.velocity
                     && this.rateOfClimb == o.rateOfClimb;
         }
@@ -185,9 +174,6 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
         result = Double.compare(this.altitude, other.altitude);
         if (result != 0)
             return result;
-        result = Double.compare(this.heading, other.heading);
-        if (result != 0)
-            return result;
         result = Double.compare(this.velocity, other.velocity);
         if (result != 0)
             return result;
@@ -207,7 +193,7 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
             date.setTime(((long) getTime()) * 1000);
             time = DATE_TIME_FORMAT.format(date);
         }
-        return super.joinCsvColumns(getIcao(), time, getLatitude(), getLongitude(), getAltitude(), getHeading(), getVelocity(), getRateOfClimb());
+        return super.joinCsvColumns(getIcao(), time, getLatitude(), getLongitude(), getAltitude(), getVelocity(), getRateOfClimb());
     }
 
     // STATIC METHODS
@@ -215,18 +201,17 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
     public static FlightDatum fromCSV(String csv) {
         List<String> tokens = CsvReader.getTokens(csv);
 
-        if (tokens.size() < 8) throw new IllegalArgumentException("CSV line for FlightDatum should consist of 8 columns");
+        if (tokens.size() < 7) throw new IllegalArgumentException("CSV line for FlightDatum should consist of 8 columns");
 
         String icao = tokens.get(0);
         double time = Double.parseDouble(tokens.get(1));
         Double lat = doubleOrNull(tokens.get(2));
         Double lon = doubleOrNull(tokens.get(3));
         Double alt = doubleOrNull(tokens.get(4));
-        Double heading = doubleOrNull(tokens.get(5));
-        Double velo = doubleOrNull(tokens.get(6));
-        Double roc = doubleOrNull(tokens.get(7));
+        Double velo = doubleOrNull(tokens.get(5));
+        Double roc = doubleOrNull(tokens.get(6));
 
-        return new FlightDatum(icao, time, lon, lat, alt, heading, velo, roc);
+        return new FlightDatum(icao, time, lon, lat, alt, velo, roc);
     }
 
     private static Double doubleOrNull(String s) {
@@ -234,5 +219,52 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
             return Double.parseDouble(s);
         }
         return null;
+    }
+
+    public static FlightDatum merge(List<FlightDatum> flightData) {
+        if (flightData.isEmpty())
+            return null;
+        if (flightData.size() == 1)
+            return flightData.get(0);
+
+        String icao = flightData.get(0).getIcao();
+
+        List<Double> times = new ArrayList<>();
+        List<Position> positions = new ArrayList<>();
+        List<Double> altitudes = new ArrayList<>();
+        List<Double> velocities = new ArrayList<>();
+        List<Double> rateOfClimbs = new ArrayList<>();
+
+        for (FlightDatum fd : flightData) {
+            times.add(fd.getTime());
+            addIfNotNull(positions, fd.getPosition());
+            addIfNotNull(altitudes, fd.getAltitude());
+            addIfNotNull(velocities, fd.getVelocity());
+            addIfNotNull(rateOfClimbs, fd.getRateOfClimb());
+        }
+
+        Position pos = Geo.findCentralPosition(positions);
+        Double lon = pos != null ? pos.getLongitude() : null;
+        Double lat = pos != null ? pos.getLatitude() : null;
+        return new FlightDatum(icao, avg(times), lon, lat, avg(altitudes), avg(velocities), avg(rateOfClimbs));
+    }
+
+    private static void addIfNotNull(List list, Object value) {
+        if (value != null) {
+            list.add(value);
+        }
+    }
+
+    private static Double avg(List<Double> values) {
+        if (values.isEmpty())
+            return null;
+        if (values.size() == 1)
+            return values.get(0);
+
+        double sum = 0;
+        for (double value : values) {
+            sum += value;
+        }
+        return sum / values.size();
     }
 }

@@ -4,6 +4,8 @@ import junit.framework.TestCase;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -15,7 +17,7 @@ public class FlightTest extends TestCase {
 
     public void testGetStartTime() throws Exception {
         // Prepare
-        List<FlightDatum> flightData = new ArrayList<FlightDatum>();
+        SortedSet<FlightDatum> flightData = new TreeSet<FlightDatum>();
         FlightDatum fd = mock(FlightDatum.class);
         when(fd.getTime()).thenReturn(1d);
         flightData.add(fd);
@@ -32,7 +34,7 @@ public class FlightTest extends TestCase {
 
     public void testGetEndTime() throws Exception {
         // Prepare
-        List<FlightDatum> flightData = new ArrayList<FlightDatum>();
+        SortedSet<FlightDatum> flightData = new TreeSet<FlightDatum>();
         FlightDatum fd = mock(FlightDatum.class);
         when(fd.getTime()).thenReturn(5d);
         flightData.add(mock(FlightDatum.class));
@@ -49,7 +51,7 @@ public class FlightTest extends TestCase {
 
     public void testGetDuration() throws Exception {
         // Prepare
-        List<FlightDatum> flightData = new ArrayList<FlightDatum>();
+        SortedSet<FlightDatum> flightData = new TreeSet<FlightDatum>();
         FlightDatum fd1 = mock(FlightDatum.class);
         when(fd1.getTime()).thenReturn(1d);
         FlightDatum fd2 = mock(FlightDatum.class);

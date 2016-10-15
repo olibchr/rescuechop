@@ -40,7 +40,7 @@ public class FlightsAnalyzer {
         // if no velocity data, do the same, but using lat+long now
 
 
-        SortedMap<Long, List<FlightDatum>> flightDataPerMinute = Grouping.groupFlightDataByMinute(flight.getFlightData());
+        SortedMap<Long, List<FlightDatum>> flightDataPerMinute = Grouping.groupFlightDataByTimeWindow(flight.getFlightData(), 60);
         for (Iterable<FlightDatum> flightData : flightDataPerMinute.values()) {
             boolean hasAltitudeData = false;
             boolean hasVelocityData = false;

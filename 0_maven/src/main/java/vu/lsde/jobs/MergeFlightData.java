@@ -1,22 +1,19 @@
 package vu.lsde.jobs;
 
-import com.clearspring.analytics.util.Lists;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
+import vu.lsde.core.model.Flight;
 import vu.lsde.core.model.FlightDatum;
+import vu.lsde.core.util.Grouping;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.SortedMap;
 
 public class MergeFlightData {
 
@@ -78,41 +75,35 @@ public class MergeFlightData {
                 return flightDatum.getRateOfClimb() != null;
             }
         }).count();
-        long headingDataCount = flightData.filter(new Function<FlightDatum, Boolean>() {
-            public Boolean call(FlightDatum flightDatum) throws Exception {
-                return flightDatum.getHeading() != null;
-            }
-        }).count();
 
         // Print statistics
-        List<String> statistics = new ArrayList<String>();
+        List<String> statistics = new ArrayList<>();
         statistics.add(numberOfItemsStatistic("input records     ", recordsCount));
         statistics.add(numberOfItemsStatistic("output flight data", flightDataCount));
         statistics.add(numberOfItemsStatistic("position data     ", positionDataCount, flightDataCount));
         statistics.add(numberOfItemsStatistic("altitude data     ", altitudeDataCount, flightDataCount));
         statistics.add(numberOfItemsStatistic("velocity data     ", velocityDataCount, flightDataCount));
         statistics.add(numberOfItemsStatistic("rate of climb data", rocDataCount, flightDataCount));
-        statistics.add(numberOfItemsStatistic("heading data      ", headingDataCount, flightDataCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 
     protected static List<FlightDatum> mergeFlightData(Iterable<FlightDatum> flightData) {
-        List<FlightDatum> result = new ArrayList<FlightDatum>();
+        List<FlightDatum> result = new ArrayList<>();
 
-        // Map to list and sort
-        List<FlightDatum> flightDataList = Lists.newArrayList(flightData);
-        Collections.sort(flightDataList);
+        // Group by 5s
+        SortedMap<Long, List<FlightDatum>> flightDatumPer5Seconds = Grouping.groupFlightDataByTimeWindow(flightData, 5);
 
-        FlightDatum mergedFlightDatum = flightDataList.get(0);
-        for (FlightDatum fd : flightDataList) {
-            if (fd.getTime() < mergedFlightDatum.getTime() + 1) {
-                mergedFlightDatum = mergedFlightDatum.extend(fd);
-            } else {
-                result.add(mergedFlightDatum);
-                mergedFlightDatum = fd;
+        // Map to merged flight data
+//        for (long timeWindow : flightDatumPer5Seconds.keySet()) {
+//            result.add(FlightDatum.merge(flightDatumPer5Seconds.get(timeWindow)));
+//        }
+        for (long timeWindow : flightDatumPer5Seconds.keySet()) {
+            List<FlightDatum> flightDataNow = flightDatumPer5Seconds.get(timeWindow);
+            FlightDatum extended = flightDataNow.get(0);
+            for (FlightDatum fd : flightDataNow) {
+                extended = extended.extend(fd);
             }
         }
-        result.add(mergedFlightDatum);
 
         return result;
     }

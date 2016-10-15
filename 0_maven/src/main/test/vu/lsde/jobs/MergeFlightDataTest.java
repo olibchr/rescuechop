@@ -14,9 +14,9 @@ public class MergeFlightDataTest extends TestCase {
         Position pos = new Position(0d, 0d, 0d);
         flightData.add(new FlightDatum("1", 1.0, pos));
         flightData.add(new FlightDatum("1", 2.0, pos));
-        flightData.add(new FlightDatum("1", 1.1, pos));
-        flightData.add(new FlightDatum("1", 2.0, pos));
-        flightData.add(new FlightDatum("1", 2.2, pos));
+        flightData.add(new FlightDatum("1", 3.0, pos));
+        flightData.add(new FlightDatum("1", 6.0, pos));
+        flightData.add(new FlightDatum("1", 7.2, pos));
 
         // Act
         List<FlightDatum> mergedFlightData = MergeFlightData.mergeFlightData(flightData);
@@ -24,8 +24,8 @@ public class MergeFlightDataTest extends TestCase {
         // Assert
         assertEquals(5, flightData.size());
         assertEquals(2, mergedFlightData.size());
-        assertEquals(1d, mergedFlightData.get(0).getTime());
-        assertEquals(2d, mergedFlightData.get(1).getTime());
+        assertEquals(2.0, mergedFlightData.get(0).getTime());
+        assertEquals(6.6, mergedFlightData.get(1).getTime());
     }
 
 }

@@ -9,17 +9,19 @@ import java.util.TreeMap;
 
 
 public class Grouping {
-    public static SortedMap<Long, List<FlightDatum>> groupFlightDataByMinute(Iterable<FlightDatum> flightData) {
-        SortedMap<Long, List<FlightDatum>> flightDataPerMinute = new TreeMap<Long, List<FlightDatum>>();
+
+    public static SortedMap<Long, List<FlightDatum>> groupFlightDataByTimeWindow(Iterable<FlightDatum> flightData, double windowLength) {
+        SortedMap<Long, List<FlightDatum>> flightDataPerMinute = new TreeMap<>();
         for (FlightDatum fd : flightData) {
-            long minute = (long) (fd.getTime() / 60);
-            List<FlightDatum> list = flightDataPerMinute.get(minute);
+            long window = (long) Math.floor(fd.getTime() / windowLength);
+            List<FlightDatum> list = flightDataPerMinute.get(window);
             if (list == null) {
-                list = new ArrayList<FlightDatum>();
-                flightDataPerMinute.put(minute, list);
+                list = new ArrayList<>();
+                flightDataPerMinute.put(window, list);
             }
             list.add(fd);
         }
         return flightDataPerMinute;
     }
+
 }
