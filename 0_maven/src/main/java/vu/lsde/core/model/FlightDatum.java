@@ -36,6 +36,10 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
         init(icao, time, pos.getLongitude(), pos.getLatitude(), pos.getAltitude(), null, null, null);
     }
 
+    public FlightDatum(String icao, double time, double altitude) {
+        init(icao, time, null, null, altitude, null, null, null);
+    }
+
     public FlightDatum(String icao, double time, AirspeedHeadingMsg msg) {
         try {
             Double heading = msg.hasHeadingInfo() ? msg.getHeading() : null;

@@ -1,32 +1,29 @@
 package vu.lsde.jobs;
 
 import com.clearspring.analytics.util.Lists;
-import com.goebl.simplify.Simplify;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.log4j.lf5.viewer.TrackingAdjustmentListener;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.api.java.function.PairFunction;
 import org.opensky.libadsb.Position;
 import scala.Tuple2;
 import vu.lsde.core.model.Flight;
 import vu.lsde.core.model.FlightDatum;
-import vu.lsde.core.model.SensorDatum;
-import vu.lsde.core.util.Util;
 
-import java.io.Serializable;
 import java.util.*;
 
 public class Flights {
-    private static final double MIN_TIME_DELTA = 20 * 60;
+    // Maximum of time between two flight data points in the same flight in seconds
+    private static final double MAX_TIME_DELTA = 20 * 60;
+    // Minimum duration of a flight in seconds
     private static final double MIN_DURATION = 60;
+    // Minimum distance an aircraft should move in a minute in meters
     private static final double MIN_DISTANCE = 10;
 
     public static void main(String[] args) {
@@ -64,7 +61,7 @@ public class Flights {
                 SortedSet<FlightDatum> lastFlightData = new TreeSet<>();
                 double lastTime = flightDataList.get(0).getTime();
                 for (FlightDatum fd : flightDataList) {
-                    if (fd.getTime() - lastTime >= MIN_TIME_DELTA) {
+                    if (fd.getTime() - lastTime >= MAX_TIME_DELTA) {
                         Flight flight = new Flight(icao, lastFlightData);
                         lastFlightData = new TreeSet<>();
                         flights.add(flight);

@@ -87,11 +87,19 @@ public class FlightData {
                         if (position != null && position.isReasonable()) {
                             flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), position));
                         }
-                    } else if (message instanceof AirspeedHeadingMsg || message instanceof VelocityOverGroundMsg){
-                        if (message instanceof AirspeedHeadingMsg) {
-                            flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), (AirspeedHeadingMsg) message));
+                    } else if (message instanceof AirspeedHeadingMsg) {
+                        flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), (AirspeedHeadingMsg) message));
+                    } else if (message instanceof VelocityOverGroundMsg) {
+                        flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), (VelocityOverGroundMsg) message));
+                    } else if (message instanceof AltitudeReply || message instanceof CommBAltitudeReply) {
+                        Double altitude;
+                        if (message instanceof AltitudeReply) {
+                            altitude = ((AltitudeReply) message).getAltitude();
                         } else {
-                            flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), (VelocityOverGroundMsg) message));
+                            altitude = ((CommBAltitudeReply) message).getAltitude();
+                        }
+                        if (altitude != null) {
+                            flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), altitude));
                         }
                     }
 
