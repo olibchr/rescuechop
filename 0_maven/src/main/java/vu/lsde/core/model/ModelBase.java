@@ -8,7 +8,7 @@ public abstract class ModelBase implements Serializable {
     private static final Joiner columnJoiner = Joiner.on(",").useForNull("");
     private static final Joiner rowJoiner = Joiner.on("\n").skipNulls();
 
-    protected static final double NULL_DOUBLE = Double.NaN;
+    protected static final double NULL_DOUBLE = Double.MIN_VALUE;
 
     public abstract String toCsv();
 

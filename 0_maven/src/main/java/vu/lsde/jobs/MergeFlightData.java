@@ -51,16 +51,48 @@ public class MergeFlightData {
         });
 
         // Flatten
-        flightData = Transformations.flatten(mergedFlightDataByAircraft);
-        long flightDataCount = flightData.count();
+        flightData = Transformations.flatten(mergedFlightDataByAircraft).cache();
 
         // Write to CSV
         Transformations.saveAsCsv(flightData, outputPath);
 
+        // Get statistics on flight data
+        long flightDataCount = flightData.count();
+        long positionDataCount = flightData.filter(new Function<FlightDatum, Boolean>() {
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.getLatitude() != null;
+            }
+        }).count();
+        long altitudeDataCount = flightData.filter(new Function<FlightDatum, Boolean>() {
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.getAltitude() != null;
+            }
+        }).count();
+        long velocityDataCount = flightData.filter(new Function<FlightDatum, Boolean>() {
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.getVelocity() != null;
+            }
+        }).count();
+        long rocDataCount = flightData.filter(new Function<FlightDatum, Boolean>() {
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.getRateOfClimb() != null;
+            }
+        }).count();
+        long headingDataCount = flightData.filter(new Function<FlightDatum, Boolean>() {
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.getHeading() != null;
+            }
+        }).count();
+
         // Print statistics
         List<String> statistics = new ArrayList<String>();
-        statistics.add(numberOfItemsStatistic("input records", recordsCount));
-        statistics.add(numberOfItemsStatistic("output records", flightDataCount));
+        statistics.add(numberOfItemsStatistic("input records     ", recordsCount));
+        statistics.add(numberOfItemsStatistic("output flight data", flightDataCount));
+        statistics.add(numberOfItemsStatistic("position data     ", positionDataCount, flightDataCount));
+        statistics.add(numberOfItemsStatistic("altitude data     ", altitudeDataCount, flightDataCount));
+        statistics.add(numberOfItemsStatistic("velocity data     ", velocityDataCount, flightDataCount));
+        statistics.add(numberOfItemsStatistic("rate of climb data", rocDataCount, flightDataCount));
+        statistics.add(numberOfItemsStatistic("heading data      ", headingDataCount, flightDataCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 
