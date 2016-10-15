@@ -32,9 +32,7 @@ public class Sampler {
         String inputPath = args[0];
         String outputPath = args[1];
 
-        SparkConf sparkConf = new SparkConf().setAppName("LSDE09 Sampler")
-                .set("spark.shuffle.service.enabled", "true")
-                .set("spark.dynamicAllocation.enabled", "true");
+        SparkConf sparkConf = new SparkConf().setAppName("LSDE09 Sampler");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Load records
@@ -45,16 +43,16 @@ public class Sampler {
             public SensorDatum call(GenericRecord genericRecord) throws Exception {
                 return SensorDatum.fromGenericRecord(genericRecord);
             }
-        }).persist(StorageLevel.MEMORY_AND_DISK());
-        long inputRecordsCount = sensorData.count();
+        });//.persist(StorageLevel.MEMORY_AND_DISK());
+        long inputRecordsCount = -1; //sensorData.count();
 
         // Filter out invalid messages
         sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
             public Boolean call(SensorDatum sensorDatum) throws Exception {
                 return sensorDatum.isValidMessage();
             }
-        }).persist(StorageLevel.MEMORY_AND_DISK());
-        long validRecordsCount = sensorData.count();
+        });//.persist(StorageLevel.MEMORY_AND_DISK());
+        long validRecordsCount = -1; //sensorData.count();
 
         // Filter out messages we won't use anyway
         sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
@@ -71,16 +69,16 @@ public class Sampler {
                 }
                 return true;
             }
-        }).persist(StorageLevel.MEMORY_AND_DISK());
-        long usefulRecordsCount = sensorData.count();
+        });//.persist(StorageLevel.MEMORY_AND_DISK());
+        long usefulRecordsCount = -1;//sensorData.count();
 
         // Group models by icao
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData.groupBy(new Function<SensorDatum, String>() {
             public String call(SensorDatum sensorDatum) {
                 return sensorDatum.getIcao();
             }
-        }).persist(StorageLevel.MEMORY_AND_DISK());
-        long aircraftCount = sensorDataByAircraft.count();
+        });//.persist(StorageLevel.MEMORY_AND_DISK());
+        long aircraftCount = -1;//sensorDataByAircraft.count();
 
         // Find aircraft flying lower than 3km
         JavaPairRDD<String, Iterable<SensorDatum>> possibleHelicopters = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
@@ -122,12 +120,12 @@ public class Sampler {
                 }
                 return true;
             }
-        }).cache();
-        long potentialHelicoptersCount = possibleHelicopters.count();
+        });//.cache();
+        long potentialHelicoptersCount = -1;//possibleHelicopters.count();
 
         // Flatten
-        JavaRDD<SensorDatum> sample = Transformations.flatten(possibleHelicopters).cache();
-        long outputRecordsCount = sample.count();
+        JavaRDD<SensorDatum> sample = Transformations.flatten(possibleHelicopters);//.cache();
+        long outputRecordsCount = -1;//sample.count();
 
         // To CSV
         Transformations.saveAsCsv(sample, outputPath);

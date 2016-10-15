@@ -32,7 +32,7 @@ public class FlightsPostProcessor {
         JavaRDD<PlotDatum> plotData = flights.flatMap(new FlatMapFunction<Flight, PlotDatum>() {
             public Iterable<PlotDatum> call(Flight flight) throws Exception {
                 List<PlotDatum> plotData = PlotDatum.fromFlight(flight);
-                return SeriesReducer.reduce(plotData, 5);
+                return SeriesReducer.reduce(plotData, 1);
             }
         });
 

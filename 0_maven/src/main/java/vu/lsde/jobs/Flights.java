@@ -58,15 +58,15 @@ public class Flights {
                 List<FlightDatum> flightDataList = Lists.newArrayList(tuple._2);
                 Collections.sort(flightDataList);
 
-                List<Flight> flights = new ArrayList<Flight>();
+                List<Flight> flights = new ArrayList<>();
 
                 // First do a rough grouping merely on time
-                SortedSet<FlightDatum> lastFlightData = new TreeSet<FlightDatum>();
+                SortedSet<FlightDatum> lastFlightData = new TreeSet<>();
                 double lastTime = flightDataList.get(0).getTime();
                 for (FlightDatum fd : flightDataList) {
                     if (fd.getTime() - lastTime >= MIN_TIME_DELTA) {
                         Flight flight = new Flight(icao, lastFlightData);
-                        lastFlightData = new TreeSet<FlightDatum>();
+                        lastFlightData = new TreeSet<>();
                         flights.add(flight);
                     }
                     lastFlightData.add(fd);
@@ -83,18 +83,18 @@ public class Flights {
 
         // Flatten
         JavaRDD<Flight> flights = Transformations.flatten(flightsByAircraft).cache();
-        long initialFlightsCount = flights.count();
+        long splitTimeCount = flights.count();
 
         // Filter flights that are too short
-        JavaRDD<Flight> longFlights = flights.filter(new Function<Flight, Boolean>() {
+        flights = flights.filter(new Function<Flight, Boolean>() {
             public Boolean call(Flight flight) throws Exception {
                 return flight.getDuration() > MIN_DURATION;
             }
         }).cache();
-        long longFlightsCount = longFlights.count();
+        long filterLong1Count = flights.count();
 
         // Filter flights that do not contain any position data
-        JavaRDD<Flight> flightsWithPosition = longFlights.filter(new Function<Flight, Boolean>() {
+        flights = flights.filter(new Function<Flight, Boolean>() {
             public Boolean call(Flight flight) throws Exception {
                 for (FlightDatum fd : flight.getFlightData()) {
                     if (fd.hasPosition()) {
@@ -104,27 +104,27 @@ public class Flights {
                 return false;
             }
         }).cache();
-        long flightsWithPositionCount = flightsWithPosition.count();
+        long flightsWithPositionCount = flights.count();
 
         // Split flights when standing still for a certain time
-        JavaRDD<Flight> finalFlights = flightsWithPosition.flatMap(new FlatMapFunction<Flight, Flight>() {
+        flights = flights.flatMap(new FlatMapFunction<Flight, Flight>() {
             public Iterable<Flight> call(Flight flight) throws Exception {
-                List<Flight> splitFlights = new ArrayList<Flight>();
+                List<Flight> splitFlights = new ArrayList<>();
 
                 // Put flight data in minute wide bins
-                SortedMap<Long, List<FlightDatum>> flightDataPerMinute = new TreeMap<Long, List<FlightDatum>>();
+                SortedMap<Long, List<FlightDatum>> flightDataPerMinute = new TreeMap<>();
                 for (FlightDatum fd : flight.getFlightData()) {
                     long minute = (long) (fd.getTime() / 60);
                     List<FlightDatum> flightData = flightDataPerMinute.get(minute);
                     if (flightData == null) {
-                        flightData = new ArrayList<FlightDatum>();
+                        flightData = new ArrayList<>();
                         flightDataPerMinute.put(minute, flightData);
                     }
                     flightData.add(fd);
                 }
 
                 // Calculate distance traveled per minute
-                List<Double> splitTimes = new ArrayList<Double>();
+                List<Double> splitTimes = new ArrayList<>();
                 for (long minute : flightDataPerMinute.keySet()) {
                     boolean split = true;
 
@@ -159,13 +159,13 @@ public class Flights {
                 if (splitTimes.isEmpty()) {
                     splitFlights.add(flight);
                 } else {
-                    SortedSet<FlightDatum> lastFlightData = new TreeSet<FlightDatum>();
+                    SortedSet<FlightDatum> lastFlightData = new TreeSet<>();
                     double time = splitTimes.get(0);
                     splitTimes.remove(0);
                     for (FlightDatum fd : flight.getFlightData()) {
                         if (fd.getTime() == time) {
                             splitFlights.add(new Flight(flight.getIcao(), lastFlightData));
-                            lastFlightData = new TreeSet<FlightDatum>();
+                            lastFlightData = new TreeSet<>();
                             if (!splitTimes.isEmpty()) {
                                 time = splitTimes.get(0);
                                 splitTimes.remove(0);
@@ -181,19 +181,28 @@ public class Flights {
                 return splitFlights;
             }
         }).cache();
-        long flightsCount = finalFlights.count();
+        long splitMovementCount = flights.count();
+
+        // Filter flights that are too short
+        flights = flights.filter(new Function<Flight, Boolean>() {
+            public Boolean call(Flight flight) throws Exception {
+                return flight.getDuration() > MIN_DURATION;
+            }
+        }).cache();
+        long filterLong2Count = flights.count();
 
         // Write to CSV
-        Transformations.saveAsCsv(finalFlights, outputPath);
+        Transformations.saveAsCsv(flights, outputPath);
 
         // Print statistics
         List<String> statistics = new ArrayList<String>();
         statistics.add(numberOfItemsStatistic("input records", recordsCount));
         statistics.add(numberOfItemsStatistic("input aircraft", aircraftCount));
-        statistics.add(numberOfItemsStatistic("flights after splitting on time only            ", initialFlightsCount));
-        statistics.add(numberOfItemsStatistic("flights after filtering on time                 ", longFlightsCount));
+        statistics.add(numberOfItemsStatistic("flights after splitting on time only            ", splitTimeCount));
+        statistics.add(numberOfItemsStatistic("flights after filtering on time                 ", filterLong1Count));
         statistics.add(numberOfItemsStatistic("flights after filtering on having location data ", flightsWithPositionCount));
-        statistics.add(numberOfItemsStatistic("flights after splitting on distance traveled    ", flightsCount));
+        statistics.add(numberOfItemsStatistic("flights after splitting on distance traveled    ", splitMovementCount));
+        statistics.add(numberOfItemsStatistic("flights after filtering on time                 ", filterLong2Count));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 
@@ -210,93 +219,3 @@ public class Flights {
         statsRDD.saveAsTextFile(outputPath + "_stats");
     }
 }
-
-// OLD CODE FOR SPLITTING
-//public Iterable<Flight> call(Flight flight) throws Exception {
-//    List<Flight> splitFlights = new ArrayList<Flight>();
-//
-//    // Put flight data in minute wide bins
-//    SortedMap<Long, List<FlightDatum>> flightDataPerMinute = new TreeMap<Long, List<FlightDatum>>();
-//    for (FlightDatum fd : flight.getFlightData()) {
-//        long minute = (long) (fd.getTime() / 60);
-//        List<FlightDatum> flightData = flightDataPerMinute.get(minute);
-//        if (flightData == null) {
-//            flightData = new ArrayList<FlightDatum>();
-//            flightDataPerMinute.put(minute, flightData);
-//        }
-//        flightData.add(fd);
-//    }
-//
-//    // Calculate distance traveled per minute
-//    SortedMap<Long, Double> distanceTraveledPerMinute = new TreeMap<Long, Double>();
-//    for (long minute : flightDataPerMinute.keySet()) {
-//        List<FlightDatum> flightData = flightDataPerMinute.get(minute);
-//        Double distanceTraveled = null;
-//        Position lastPosition = null;
-//        for (FlightDatum fd : flightData) {
-//            Position position = fd.getPosition();
-//            if (position != null) {
-//                if (position.getAltitude() != null && position.getAltitude() > 50) {
-//                    distanceTraveled = MIN_DISTANCE;
-//                    break;
-//                }
-//                if (lastPosition != null) {
-//                    if (distanceTraveled == null) {
-//                        distanceTraveled = 0d;
-//                    }
-//                    distanceTraveled += lastPosition.distanceTo(position);
-//                }
-//                lastPosition = position;
-//            }
-//        }
-//        distanceTraveledPerMinute.put(minute, distanceTraveled);
-//    }
-//
-//    // Sliding window (slide per minute) that checks distance traveled during that window
-//    List<Double> splitTimes = new ArrayList<Double>();
-//    for (long minute : flightDataPerMinute.keySet()) {
-//        Double totalDistanceTraveled = distanceTraveledPerMinute.get(minute);
-//        if (totalDistanceTraveled == null)
-//            continue;
-//
-//        for (int i = 1; i < 20; i++) {
-//            Double distanceTraveled = distanceTraveledPerMinute.get(minute + i);
-//            if (distanceTraveled != null) {
-//                totalDistanceTraveled += distanceTraveledPerMinute.get(minute + i);
-//            }
-//        }
-//
-//        if (totalDistanceTraveled >= MIN_DISTANCE) {
-//            List<FlightDatum> flightData = flightDataPerMinute.get(minute);
-//            for (int i = 1; i < 20; i++) {
-//                flightData = Util.addList(flightData, flightDataPerMinute.get(minute + i));
-//            }
-//            splitTimes.add(flightData.get(flightData.size() / 2).getTime());
-//        }
-//    }
-//
-//    // Split flight if we found moments to split on
-//    if (splitTimes.isEmpty()) {
-//        splitFlights.add(flight);
-//    } else {
-//        List<FlightDatum> lastFlightData = new ArrayList<FlightDatum>();
-//        double time = splitTimes.get(0);
-//        splitTimes.remove(0);
-//        for (FlightDatum fd : flight.getFlightData()) {
-//            if (fd.getTime() == time) {
-//                splitFlights.add(new Flight(flight.getIcao(), lastFlightData));
-//                lastFlightData.clear();
-//                if (!splitTimes.isEmpty()) {
-//                    time = splitTimes.get(0);
-//                    splitTimes.remove(0);
-//                } else {
-//                    time = Double.MAX_VALUE;
-//                }
-//            }
-//            lastFlightData.add(fd);
-//        }
-//        splitFlights.add(new Flight(flight.getIcao(), lastFlightData));
-//    }
-//
-//    return splitFlights;
-//}
