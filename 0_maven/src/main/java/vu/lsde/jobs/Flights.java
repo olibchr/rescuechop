@@ -147,7 +147,7 @@ public class Flights {
         statistics.add(numberOfItemsStatistic("flights after filtering on time                 ", filterLong1Count));
         statistics.add(numberOfItemsStatistic("flights after filtering on having location data ", flightsWithPositionCount));
         statistics.add(numberOfItemsStatistic("flights after splitting on altitude/position    ", splitMovementCount));
-        statistics.add(numberOfItemsStatistic("flights after filtering on time                 ", filterLong2Count))
+        statistics.add(numberOfItemsStatistic("flights after filtering on time                 ", filterLong2Count));
         statistics.add(numberOfItemsStatistic("output aircraft", outputAircraftCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
