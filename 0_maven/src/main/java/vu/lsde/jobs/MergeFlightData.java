@@ -7,7 +7,6 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
-import vu.lsde.core.model.Flight;
 import vu.lsde.core.model.FlightDatum;
 import vu.lsde.core.util.Grouping;
 
@@ -15,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
 
-public class MergeFlightData {
+public class MergeFlightData extends JobBase {
 
     public static void main(String[] args) {
         String inputPath = args[0];
@@ -25,7 +24,7 @@ public class MergeFlightData {
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Load flight data
-        JavaRDD<FlightDatum> flightData = Transformations.readFlightDataCsv(sc, inputPath);
+        JavaRDD<FlightDatum> flightData = readFlightDataCsv(sc, inputPath);
         long recordsCount = flightData.count();
 
         // Group by aircraft
@@ -48,10 +47,10 @@ public class MergeFlightData {
         });
 
         // Flatten
-        flightData = Transformations.flatten(mergedFlightDataByAircraft).cache();
+        flightData = flatten(mergedFlightDataByAircraft).cache();
 
         // Write to CSV
-        Transformations.saveAsCsv(flightData, outputPath);
+        saveAsCsv(flightData, outputPath);
 
         // Get statistics on flight data
         long flightDataCount = flightData.count();
@@ -97,30 +96,7 @@ public class MergeFlightData {
         for (long timeWindow : flightDatumPer5Seconds.keySet()) {
             result.add(FlightDatum.merge(flightDatumPer5Seconds.get(timeWindow)));
         }
-//        for (long timeWindow : flightDatumPer5Seconds.keySet()) {
-//            List<FlightDatum> flightDataNow = flightDatumPer5Seconds.get(timeWindow);
-//            FlightDatum extended = flightDataNow.get(0);
-//            for (FlightDatum fd : flightDataNow) {
-//                extended = extended.extend(fd);
-//            }
-//            result.add(extended);
-//        }
 
         return result;
-    }
-
-    // Helper methods
-
-    private static String numberOfItemsStatistic(String itemName, long count) {
-        return String.format("Number of %s: %d", itemName, count);
-    }
-
-    private static String numberOfItemsStatistic(String itemName, long count, long parentCount) {
-        return String.format("Number of %s: %d (%.2f%%)", itemName, count, 100.0 * count / parentCount);
-    }
-
-    private static void saveStatisticsAsTextFile(JavaSparkContext sc, String outputPath, List<String> statisticsLines) {
-        JavaRDD<String> statsRDD = sc.parallelize(statisticsLines).coalesce(1);
-        statsRDD.saveAsTextFile(outputPath + "_stats");
     }
 }

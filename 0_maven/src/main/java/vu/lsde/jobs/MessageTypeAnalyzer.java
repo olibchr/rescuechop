@@ -1,36 +1,21 @@
 package vu.lsde.jobs;
 
-import com.clearspring.analytics.util.Lists;
-import org.apache.hadoop.yarn.webapp.hamlet.HamletSpec;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 import org.apache.spark.Accumulator;
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction;
-import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.api.java.function.VoidFunction;
-import org.opensky.libadsb.Position;
-import org.opensky.libadsb.PositionDecoder;
 import org.opensky.libadsb.msgs.*;
-import scala.Int;
-import scala.Tuple2;
-import vu.lsde.core.model.FlightDatum;
 import vu.lsde.core.model.SensorDatum;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
- * Created by richa on 12/10/2016.
+ * Reads sensor data in CSV format and analyzes the kind of messages that are in there.
  */
-public class MessageTypeAnalyzer {
+public class MessageTypeAnalyzer extends JobBase {
 
     public static void main(String[] args) throws IOException {
         String inputPath = args[0];
@@ -40,7 +25,7 @@ public class MessageTypeAnalyzer {
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Load sensor data
-        JavaRDD<SensorDatum> sensorData = Transformations.readSensorDataCsv(sc, inputPath);
+        JavaRDD<SensorDatum> sensorData = readSensorDataCsv(sc, inputPath);
         long recordsCount = sensorData.count();
 
         // Accumulators for counting
@@ -132,18 +117,5 @@ public class MessageTypeAnalyzer {
         statistics.add(numberOfItemsStatistic("other                       ", otherAcc.value(), recordsCount));
         statistics.add(numberOfItemsStatistic("invalid                     ", invalidAcc.value(), recordsCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
-    }
-
-    private static String numberOfItemsStatistic(String itemName, long count) {
-        return String.format("Number of %s: %d", itemName, count);
-    }
-
-    private static String numberOfItemsStatistic(String itemName, long count, long parentCount) {
-        return String.format("Number of %s: %d (%.2f%%)", itemName, count, 100.0 * count / parentCount);
-    }
-
-    private static void saveStatisticsAsTextFile(JavaSparkContext sc, String outputPath, List<String> statisticsLines) {
-        JavaRDD<String> statsRDD = sc.parallelize(statisticsLines).coalesce(1);
-        statsRDD.saveAsTextFile(outputPath + "_stats");
     }
 }

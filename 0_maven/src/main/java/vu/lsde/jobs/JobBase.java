@@ -11,15 +11,16 @@ import vu.lsde.core.model.FlightDatum;
 import vu.lsde.core.model.ModelBase;
 import vu.lsde.core.model.SensorDatum;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
 /**
- * Utility class that contains functions for RDDs that are often used in various jobs.
+ * Base class for Spark jobs.
  */
-public class Transformations {
+public abstract class JobBase {
+
+    // Common RDD operations
 
     /**
      * Loads SensorDatum objects from a CSV encoded file into an RDD
@@ -132,4 +133,19 @@ public class Transformations {
             }
         }).saveAsTextFile(outputPath);
     }
+
+    // Utility methods
+
+    protected static String numberOfItemsStatistic(String itemName, long count) {
+        return String.format("Number of %s: %d", itemName, count);
+    }
+
+    protected static String numberOfItemsStatistic(String itemName, long count, long parentCount) {
+        return String.format("Number of %s: %d (%.2f%%)", itemName, count, 100.0 * count / parentCount);
+    }
+
+    protected static void saveStatisticsAsTextFile(JavaSparkContext sc, String outputPath, List<String> statisticsLines) {
+        sc.parallelize(statisticsLines, 1).saveAsTextFile(outputPath + "_stats");
+    }
+
 }

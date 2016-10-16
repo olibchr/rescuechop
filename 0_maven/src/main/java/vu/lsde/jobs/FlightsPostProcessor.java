@@ -14,7 +14,7 @@ import vu.lsde.core.reducer.SeriesReducer;
 
 import java.util.List;
 
-public class FlightsPostProcessor {
+public class FlightsPostProcessor extends JobBase {
     public static void main(String[] args) {
         Logger log = LogManager.getLogger(Flights.class);
         log.setLevel(Level.INFO);
@@ -26,7 +26,7 @@ public class FlightsPostProcessor {
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Retrieve flights
-        JavaRDD<Flight> flights = Transformations.readFlightsCsv(sc, inputPath);
+        JavaRDD<Flight> flights = readFlightsCsv(sc, inputPath);
 
         // Convert to plot data and reduce it
         JavaRDD<PlotDatum> plotData = flights.flatMap(new FlatMapFunction<Flight, PlotDatum>() {

@@ -26,7 +26,7 @@ import java.util.List;
  * are definitely NOT rotorcraft. This is done by looking at speed and altitude. The remaining sensordata is then output
  * in the form of CSV.
  */
-public class Sampler {
+public class Sampler extends JobBase {
 
     public static void main(String[] args) throws IOException {
         String inputPath = args[0];
@@ -134,11 +134,11 @@ public class Sampler {
         long potentialHelicoptersCount = possibleHelicopters.count();
 
         // Flatten
-        JavaRDD<SensorDatum> sample = Transformations.flatten(possibleHelicopters).cache();
+        JavaRDD<SensorDatum> sample = flatten(possibleHelicopters).cache();
         long outputRecordsCount = sample.count();
 
         // To CSV
-        Transformations.saveAsCsv(sample, outputPath);
+        saveAsCsv(sample, outputPath);
 
         // Print statistics
         List<String> statistics = new ArrayList<>();
@@ -148,11 +148,6 @@ public class Sampler {
         statistics.add(numberOfItemsStatistic("unique aircraft         ", aircraftCount));
         statistics.add(numberOfItemsStatistic("potential helicopters   ", potentialHelicoptersCount));
         statistics.add(numberOfItemsStatistic("messages in final sample", outputRecordsCount));
-        JavaRDD<String> statsRDD = sc.parallelize(statistics, 1);
-        statsRDD.saveAsTextFile(outputPath + "_stats");
-    }
-
-    private static String numberOfItemsStatistic(String itemName, long count) {
-        return String.format("Number of %s: %d", itemName, count);
+        saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 }

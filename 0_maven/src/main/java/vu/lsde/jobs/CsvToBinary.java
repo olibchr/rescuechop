@@ -26,7 +26,7 @@ import java.util.List;
 /**
  * Converts CSV sensor data to binary sensor data.
  */
-public class CsvToBinary {
+public class CsvToBinary extends JobBase {
 
     public static void main(String[] args) throws IOException {
         String inputPath = args[0];
@@ -36,7 +36,7 @@ public class CsvToBinary {
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Load CSV
-        JavaRDD<SensorDatum> sensorData = Transformations.readSensorDataCsv(sc, inputPath);
+        JavaRDD<SensorDatum> sensorData = readSensorDataCsv(sc, inputPath);
 
         // To binary
         sensorData.saveAsObjectFile(outputPath);

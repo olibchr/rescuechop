@@ -14,7 +14,7 @@ import java.io.*;
 /**
  * Converts binary sensor data to CSV sensor data.
  */
-public class BinaryToCsv {
+public class BinaryToCsv extends JobBase {
 
     public static void main(String[] args) throws IOException {
         String inputPath = args[0];
@@ -27,6 +27,6 @@ public class BinaryToCsv {
         JavaRDD<SensorDatum> records = sc.objectFile(inputPath);
 
         // Save as CSV
-        Transformations.saveAsCsv(records, outputPath);
+        saveAsCsv(records, outputPath);
     }
 }

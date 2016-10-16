@@ -26,7 +26,7 @@ import java.util.List;
 /**
  * Maps sensor data to aircraft positions.
  */
-public class FlightData {
+public class FlightData extends JobBase {
 
     public static void main(String[] args) throws IOException {
         String inputPath = args[0];
@@ -36,7 +36,7 @@ public class FlightData {
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Load sensor data
-        JavaRDD<SensorDatum> sensorData = Transformations.readSensorDataCsv(sc, inputPath);
+        JavaRDD<SensorDatum> sensorData = readSensorDataCsv(sc, inputPath);
         long recordsCount = sensorData.count();
 
         // Filter position and velocity messages
@@ -109,10 +109,10 @@ public class FlightData {
         });
 
         // Flatten
-        JavaRDD<FlightDatum> flightData = Transformations.flatten(flightDataByAircraft).cache();
+        JavaRDD<FlightDatum> flightData = flatten(flightDataByAircraft).cache();
 
         // Write to CSV
-        Transformations.saveAsCsv(flightData, outputPath);
+        saveAsCsv(flightData, outputPath);
 
         // Get statistics on flight data
         long flightDataCount = flightData.count();
@@ -138,7 +138,7 @@ public class FlightData {
         }).count();
 
         // Print statistics
-        List<String> statistics = new ArrayList<String>();
+        List<String> statistics = new ArrayList<>();
         statistics.add(numberOfItemsStatistic("input records     ", recordsCount));
         statistics.add(numberOfItemsStatistic("filtered records  ", filteredRecordsCount));
         statistics.add(numberOfItemsStatistic("output flight data", flightDataCount));
@@ -149,16 +149,5 @@ public class FlightData {
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 
-    private static String numberOfItemsStatistic(String itemName, long count) {
-        return String.format("Number of %s: %d", itemName, count);
-    }
 
-    private static String numberOfItemsStatistic(String itemName, long count, long parentCount) {
-        return String.format("Number of %s: %d (%.2f%%)", itemName, count, 100.0 * count / parentCount);
-    }
-
-    private static void saveStatisticsAsTextFile(JavaSparkContext sc, String outputPath, List<String> statisticsLines) {
-        JavaRDD<String> statsRDD = sc.parallelize(statisticsLines).coalesce(1);
-        statsRDD.saveAsTextFile(outputPath + "_stats");
-    }
 }

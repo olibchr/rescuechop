@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
 
-public class FlightsAnalyzer {
+public class FlightsAnalyzer extends JobBase {
     public static void main(String[] args) {
         Logger log = LogManager.getLogger(Flights.class);
         log.setLevel(Level.INFO);
@@ -30,7 +30,7 @@ public class FlightsAnalyzer {
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Get flights
-        JavaRDD<Flight> flights = Transformations.readFlightsCsv(sc, inputPath);
+        JavaRDD<Flight> flights = readFlightsCsv(sc, inputPath);
     }
 
     public static boolean hadLowSpeedInAir(Flight flight) {

@@ -20,7 +20,7 @@ import vu.lsde.core.util.Grouping;
 
 import java.util.*;
 
-public class Flights {
+public class Flights extends JobBase {
     // Maximum of time between two flight data points in the same flight in seconds
     private static final double MAX_TIME_DELTA = 20 * 60;
     // Minimum duration of a flight in seconds
@@ -41,7 +41,7 @@ public class Flights {
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Load flight data
-        JavaRDD<FlightDatum> flightData = Transformations.readFlightDataCsv(sc, inputPath);
+        JavaRDD<FlightDatum> flightData = readFlightDataCsv(sc, inputPath);
         long recordsCount = flightData.count();
 
         // Group by aircraft
@@ -83,7 +83,7 @@ public class Flights {
         });
 
         // Flatten
-        JavaRDD<Flight> flights = Transformations.flatten(flightsByAircraft).cache();
+        JavaRDD<Flight> flights = flatten(flightsByAircraft).cache();
         long splitTimeCount = flights.count();
 
         // Filter flights that are too short
@@ -130,14 +130,13 @@ public class Flights {
         long filterLong2Count = flights.count();
 
         long outputAircraftCount = flights.groupBy(new Function<Flight, String>() {
-            @Override
             public String call(Flight flight) throws Exception {
                 return flight.getIcao();
             }
         }).count();
 
         // Write to CSV
-        Transformations.saveAsCsv(flights, outputPath);
+        saveAsCsv(flights, outputPath);
 
         // Print statistics
         List<String> statistics = new ArrayList<String>();
@@ -150,19 +149,6 @@ public class Flights {
         statistics.add(numberOfItemsStatistic("flights after filtering on time                 ", filterLong2Count));
         statistics.add(numberOfItemsStatistic("output aircraft", outputAircraftCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
-    }
-
-    private static String numberOfItemsStatistic(String itemName, long count) {
-        return String.format("Number of %s: %d", itemName, count);
-    }
-
-    private static String numberOfItemsStatistic(String itemName, long count, long parentCount) {
-        return String.format("Number of %s: %d (%.2f%%)", itemName, count, 100.0 * count / parentCount);
-    }
-
-    private static void saveStatisticsAsTextFile(JavaSparkContext sc, String outputPath, List<String> statisticsLines) {
-        JavaRDD<String> statsRDD = sc.parallelize(statisticsLines).coalesce(1);
-        statsRDD.saveAsTextFile(outputPath + "_stats");
     }
 
     private static Iterable<Flight> splitFlightOnAltitude(Flight flight) {

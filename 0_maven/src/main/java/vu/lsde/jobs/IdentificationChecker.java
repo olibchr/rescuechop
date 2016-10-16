@@ -24,7 +24,7 @@ import java.util.List;
  * Job that takes sensor data as input, groups it by ICAO, and checks each aircraft for ADS-B identifcation messages.
  * Only sensor data that belongs to aircraft that specifically state they are a rotorcraft is left in.
  */
-public class IdentificationChecker {
+public class IdentificationChecker extends JobBase {
 
     public static void main(String[] args) throws IOException {
         String inputPath = args[0];
@@ -34,7 +34,7 @@ public class IdentificationChecker {
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Map to model
-        JavaRDD<SensorDatum> sensorData = Transformations.readSensorDataCsv(sc, inputPath);
+        JavaRDD<SensorDatum> sensorData = readSensorDataCsv(sc, inputPath);
         long recordsCount = sensorData.count();
 
         // Filter out invalid messages
@@ -68,11 +68,11 @@ public class IdentificationChecker {
         long rotorcraftCount = sensorDataByAircraft.count();
 
         // Flatten
-        sensorData = Transformations.flatten(sensorDataByAircraft);
+        sensorData = flatten(sensorDataByAircraft);
         long outputLinesCount = sensorData.count();
 
         // Write to CSV
-        Transformations.saveAsCsv(sensorData, outputPath);
+        saveAsCsv(sensorData, outputPath);
 
         // Print statistics
         List<String> statistics = new ArrayList<String>();
@@ -82,14 +82,5 @@ public class IdentificationChecker {
         statistics.add(numberOfItemsStatistic("definite helicopters", rotorcraftCount));
         statistics.add(numberOfItemsStatistic("messages in final sample", outputLinesCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
-    }
-
-    private static String numberOfItemsStatistic(String itemName, long count) {
-        return String.format("Number of %s: %d", itemName, count);
-    }
-
-    private static void saveStatisticsAsTextFile(JavaSparkContext sc, String outputPath, List<String> statisticsLines) {
-        JavaRDD<String> statsRDD = sc.parallelize(statisticsLines).coalesce(1);
-        statsRDD.saveAsTextFile(outputPath + "_stats");
     }
 }
