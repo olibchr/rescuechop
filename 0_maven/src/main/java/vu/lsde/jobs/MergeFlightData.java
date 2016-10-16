@@ -94,16 +94,17 @@ public class MergeFlightData {
         SortedMap<Long, List<FlightDatum>> flightDatumPer5Seconds = Grouping.groupFlightDataByTimeWindow(flightData, 5);
 
         // Map to merged flight data
-//        for (long timeWindow : flightDatumPer5Seconds.keySet()) {
-//            result.add(FlightDatum.merge(flightDatumPer5Seconds.get(timeWindow)));
-//        }
         for (long timeWindow : flightDatumPer5Seconds.keySet()) {
-            List<FlightDatum> flightDataNow = flightDatumPer5Seconds.get(timeWindow);
-            FlightDatum extended = flightDataNow.get(0);
-            for (FlightDatum fd : flightDataNow) {
-                extended = extended.extend(fd);
-            }
+            result.add(FlightDatum.merge(flightDatumPer5Seconds.get(timeWindow)));
         }
+//        for (long timeWindow : flightDatumPer5Seconds.keySet()) {
+//            List<FlightDatum> flightDataNow = flightDatumPer5Seconds.get(timeWindow);
+//            FlightDatum extended = flightDataNow.get(0);
+//            for (FlightDatum fd : flightDataNow) {
+//                extended = extended.extend(fd);
+//            }
+//            result.add(extended);
+//        }
 
         return result;
     }

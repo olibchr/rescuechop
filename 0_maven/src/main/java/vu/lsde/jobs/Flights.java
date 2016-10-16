@@ -129,6 +129,13 @@ public class Flights {
         }).cache();
         long filterLong2Count = flights.count();
 
+        long outputAircraftCount = flights.groupBy(new Function<Flight, String>() {
+            @Override
+            public String call(Flight flight) throws Exception {
+                return flight.getIcao();
+            }
+        }).count();
+
         // Write to CSV
         Transformations.saveAsCsv(flights, outputPath);
 
@@ -140,7 +147,8 @@ public class Flights {
         statistics.add(numberOfItemsStatistic("flights after filtering on time                 ", filterLong1Count));
         statistics.add(numberOfItemsStatistic("flights after filtering on having location data ", flightsWithPositionCount));
         statistics.add(numberOfItemsStatistic("flights after splitting on altitude/position    ", splitMovementCount));
-        statistics.add(numberOfItemsStatistic("flights after filtering on time                 ", filterLong2Count));
+        statistics.add(numberOfItemsStatistic("flights after filtering on time                 ", filterLong2Count))
+        statistics.add(numberOfItemsStatistic("output aircraft", outputAircraftCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 

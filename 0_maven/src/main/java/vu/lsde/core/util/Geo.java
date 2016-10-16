@@ -40,6 +40,6 @@ public class Geo {
         double centralSqrt = Math.sqrt(x * x + y * y);
         double centralLat = Math.atan2(z, centralSqrt);
 
-        return new Position(centralLon, centralLat, null);
+        return new Position(Math.toDegrees(centralLon), Math.toDegrees(centralLat), null);
     }
 }

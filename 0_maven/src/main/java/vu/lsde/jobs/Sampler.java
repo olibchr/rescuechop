@@ -33,7 +33,10 @@ public class Sampler {
         String outputPath = args[1];
 
         SparkConf sparkConf = new SparkConf().setAppName("LSDE09 Sampler")
-                .set("spark.core.connection.ack.wait.timeout", "600s");
+                .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+                .registerKryoClasses(new Class[]{SensorDatum.class});
+//                .set("spark.core.connection.ack.wait.timeout", "600s");
+
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Load records
@@ -44,16 +47,16 @@ public class Sampler {
             public SensorDatum call(GenericRecord genericRecord) throws Exception {
                 return SensorDatum.fromGenericRecord(genericRecord);
             }
-        });//.persist(StorageLevel.MEMORY_AND_DISK());
-        long inputRecordsCount = -1; //sensorData.count();
+        }).cache();
+        long inputRecordsCount = sensorData.count();
 
         // Filter out invalid messages
         sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
             public Boolean call(SensorDatum sensorDatum) throws Exception {
                 return sensorDatum.isValidMessage();
             }
-        });//.persist(StorageLevel.MEMORY_AND_DISK());
-        long validRecordsCount = -1; //sensorData.count();
+        }).cache();
+        long validRecordsCount = sensorData.count();
 
         // Filter out messages we won't use anyway
         sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
@@ -70,74 +73,75 @@ public class Sampler {
                 }
                 return true;
             }
-        });//.persist(StorageLevel.MEMORY_AND_DISK());
-        long usefulRecordsCount = -1;//sensorData.count();
+        }).cache();
+        long usefulRecordsCount = sensorData.count();
 
         // Group models by icao
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData.groupBy(new Function<SensorDatum, String>() {
             public String call(SensorDatum sensorDatum) {
                 return sensorDatum.getIcao();
             }
-        });//.persist(StorageLevel.MEMORY_AND_DISK());
-        long aircraftCount = -1;//sensorDataByAircraft.count();
+        }).cache();
+        long aircraftCount = sensorDataByAircraft.count();
 
-        // Find aircraft flying lower than 3km
+        // Find aircraft flying lower than 3km, slower than 90m/s, not military, and only rotorcrafts or unidentified
         JavaPairRDD<String, Iterable<SensorDatum>> possibleHelicopters = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
             public Boolean call(Tuple2<String, Iterable<SensorDatum>> tuple) throws Exception {
                 int airborneMsgCount = 0;
                 for (SensorDatum sd: tuple._2) {
-                    if (sd.getDecodedMessage() instanceof AltitudeReply) {
-                        AltitudeReply msg = (AltitudeReply) sd.getDecodedMessage();
+                    ModeSReply decodedMessage = sd.getDecodedMessage();
+                    if (decodedMessage instanceof AltitudeReply) {
+                        AltitudeReply msg = (AltitudeReply) decodedMessage;
                         if (msg.getAltitude() != null && msg.getAltitude() > 3000) {
                             return false;
                         }
                         airborneMsgCount++;
-                    } else if (sd.getDecodedMessage() instanceof CommBAltitudeReply) {
-                        CommBAltitudeReply msg = (CommBAltitudeReply) sd.getDecodedMessage();
+                    } else if (decodedMessage instanceof CommBAltitudeReply) {
+                        CommBAltitudeReply msg = (CommBAltitudeReply) decodedMessage;
                         if (msg.getAltitude() != null && msg.getAltitude() > 3000) {
                             return false;
                         }
                         airborneMsgCount++;
-                    } else if (sd.getDecodedMessage() instanceof AirbornePositionMsg) {
-                        AirbornePositionMsg msg = (AirbornePositionMsg) sd.getDecodedMessage();
+                    } else if (decodedMessage instanceof AirbornePositionMsg) {
+                        AirbornePositionMsg msg = (AirbornePositionMsg) decodedMessage;
                         if (msg.hasAltitude() && msg.getAltitude() > 3000) {
                             return false;
                         }
                         airborneMsgCount++;
-                    } else if (sd.getDecodedMessage() instanceof AirspeedHeadingMsg) {
-                        AirspeedHeadingMsg msg = (AirspeedHeadingMsg) sd.getDecodedMessage();
-                        if (msg.hasAirspeedInfo() && msg.getAirspeed() > 90) {
+                    } else if (decodedMessage instanceof AirspeedHeadingMsg) {
+                        AirspeedHeadingMsg msg = (AirspeedHeadingMsg) decodedMessage;
+                        if (msg.hasAirspeedInfo() && msg.getAirspeed() > 120) {
                             return false;
                         }
                         airborneMsgCount++;
-                    } else if (sd.getDecodedMessage() instanceof VelocityOverGroundMsg) {
-                        VelocityOverGroundMsg msg = (VelocityOverGroundMsg) sd.getDecodedMessage();
-                        if (msg.hasVelocityInfo() && msg.getVelocity() > 90) {
+                    } else if (decodedMessage instanceof VelocityOverGroundMsg) {
+                        VelocityOverGroundMsg msg = (VelocityOverGroundMsg) decodedMessage;
+                        if (msg.hasVelocityInfo() && msg.getVelocity() > 120) {
                             return false;
                         }
-                    } else if (sd.getDecodedMessage() instanceof IdentificationMsg) {
-                        IdentificationMsg msg = (IdentificationMsg) sd.getDecodedMessage();
+                    } else if (decodedMessage instanceof IdentificationMsg) {
+                        IdentificationMsg msg = (IdentificationMsg) decodedMessage;
                         if (msg.getEmitterCategory() != 0 && !msg.getCategoryDescription().equals("Rotorcraft")) {
                             return false;
                         }
-                    } else if (sd.getDecodedMessage() instanceof MilitaryExtendedSquitter) {
+                    } else if (decodedMessage instanceof MilitaryExtendedSquitter) {
                         return false;
                     }
                 }
                 return airborneMsgCount > 0;
             }
-        });//.cache();
-        long potentialHelicoptersCount = -1;//possibleHelicopters.count();
+        }).cache();
+        long potentialHelicoptersCount = possibleHelicopters.count();
 
         // Flatten
-        JavaRDD<SensorDatum> sample = Transformations.flatten(possibleHelicopters);//.cache();
-        long outputRecordsCount = -1;//sample.count();
+        JavaRDD<SensorDatum> sample = Transformations.flatten(possibleHelicopters).cache();
+        long outputRecordsCount = sample.count();
 
         // To CSV
         Transformations.saveAsCsv(sample, outputPath);
 
         // Print statistics
-        List<String> statistics = new ArrayList<String>();
+        List<String> statistics = new ArrayList<>();
         statistics.add(numberOfItemsStatistic("raw records             ", inputRecordsCount));
         statistics.add(numberOfItemsStatistic("valid records           ", validRecordsCount));
         statistics.add(numberOfItemsStatistic("useful records          ", usefulRecordsCount));

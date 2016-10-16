@@ -87,10 +87,6 @@ public class FlightData {
                         if (position != null && position.isReasonable()) {
                             flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), position));
                         }
-                    } else if (message instanceof AirspeedHeadingMsg) {
-                        flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), (AirspeedHeadingMsg) message));
-                    } else if (message instanceof VelocityOverGroundMsg) {
-                        flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), (VelocityOverGroundMsg) message));
                     } else if (message instanceof AltitudeReply || message instanceof CommBAltitudeReply) {
                         Double altitude;
                         if (message instanceof AltitudeReply) {
@@ -101,16 +97,19 @@ public class FlightData {
                         if (altitude != null) {
                             flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), altitude));
                         }
+                    } else if (message instanceof AirspeedHeadingMsg) {
+                        flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), (AirspeedHeadingMsg) message));
+                    } else if (message instanceof VelocityOverGroundMsg) {
+                        flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), (VelocityOverGroundMsg) message));
                     }
 
                 }
                 return new Tuple2<String, Iterable<FlightDatum>>(icao, flightData);
             }
         });
-        long outputAircraftCount = flightDataByAircraft.keys().distinct().count();
 
         // Flatten
-        JavaRDD<FlightDatum> flightData = Transformations.flatten(flightDataByAircraft);
+        JavaRDD<FlightDatum> flightData = Transformations.flatten(flightDataByAircraft).cache();
 
         // Write to CSV
         Transformations.saveAsCsv(flightData, outputPath);
@@ -142,7 +141,6 @@ public class FlightData {
         List<String> statistics = new ArrayList<String>();
         statistics.add(numberOfItemsStatistic("input records     ", recordsCount));
         statistics.add(numberOfItemsStatistic("filtered records  ", filteredRecordsCount));
-        statistics.add(numberOfItemsStatistic("aircraft          ", outputAircraftCount));
         statistics.add(numberOfItemsStatistic("output flight data", flightDataCount));
         statistics.add(numberOfItemsStatistic("position data     ", positionDataCount, flightDataCount));
         statistics.add(numberOfItemsStatistic("altitude data     ", altitudeDataCount, flightDataCount));

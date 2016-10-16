@@ -24,8 +24,7 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     private double timeAtServer;
     private String rawMessage;
 
-    private transient ModeSReply decodedMessage;
-    private transient String icao;
+    private String icao;
 
     // CONSTRUCTOR
 
@@ -42,13 +41,7 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     }
 
     private void init() {
-        ModeSReply decodedMessage;
-        try {
-            decodedMessage = Decoder.genericDecoder(rawMessage);
-        } catch (BadFormatException | UnspecifiedFormatError | ArrayIndexOutOfBoundsException e) {
-            decodedMessage = null;
-        }
-        this.decodedMessage = decodedMessage;
+        ModeSReply decodedMessage = getDecodedMessage();
         this.icao = decodedMessage != null ? tools.toHexString(decodedMessage.getIcao24()) : null;
     }
 
@@ -71,11 +64,17 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     }
 
     public boolean isValidMessage() {
-        return this.decodedMessage != null;
+        return this.icao != null;
     }
 
     public ModeSReply getDecodedMessage() {
-        return this.decodedMessage;
+        ModeSReply msg;
+        try {
+            msg = Decoder.genericDecoder(rawMessage);
+        } catch (BadFormatException | UnspecifiedFormatError | ArrayIndexOutOfBoundsException e) {
+            msg = null;
+        }
+        return msg;
     }
 
     public String getIcao() {
@@ -99,24 +98,6 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
         return this.icao.compareTo(other.icao);
     }
 
-    // SERIALIZABLE
-
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        stream.writeDouble(sensorLatitude);
-        stream.writeDouble(sensorLongitude);
-        stream.writeDouble(timeAtServer);
-        stream.writeObject(rawMessage);
-    }
-
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        sensorLatitude = stream.readDouble();
-        sensorLongitude = stream.readDouble();
-        timeAtServer = stream.readDouble();
-        rawMessage = (String) stream.readObject();
-
-        init();
-    }
-
     // STATIC
 
     /**
@@ -136,8 +117,8 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
     }
 
     /**
-     * Creates a SensorDatum object given a CSV line. It should consist of five columns containing timeAtServer,
-     * timeAtSensor, timestamp, rawMessage and sensorSerialNumber, in that order.
+     * Creates a SensorDatum object given a CSV line. It should consist of four columns containing sensorLatitude,
+     * sensorLongitude, timestamp and rawMessage, in that order.
      *
      * @param csv
      * @return

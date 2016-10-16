@@ -133,7 +133,9 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
         if (other == null) {
             return this;
         } else {
-            return new FlightDatum(icao, time,
+            return new FlightDatum(
+                    icao,
+                    time,
                     firstNonNull(this.getLongitude(), other.getLongitude()),
                     firstNonNull(this.getLatitude(), other.getLatitude()),
                     firstNonNull(this.getAltitude(), other.getAltitude()),
@@ -229,14 +231,14 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
 
         String icao = flightData.get(0).getIcao();
 
-        List<Double> times = new ArrayList<>();
+        double timeSum = 0;
         List<Position> positions = new ArrayList<>();
         List<Double> altitudes = new ArrayList<>();
         List<Double> velocities = new ArrayList<>();
         List<Double> rateOfClimbs = new ArrayList<>();
 
         for (FlightDatum fd : flightData) {
-            times.add(fd.getTime());
+            timeSum += fd.getTime();
             addIfNotNull(positions, fd.getPosition());
             addIfNotNull(altitudes, fd.getAltitude());
             addIfNotNull(velocities, fd.getVelocity());
@@ -246,7 +248,7 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
         Position pos = Geo.findCentralPosition(positions);
         Double lon = pos != null ? pos.getLongitude() : null;
         Double lat = pos != null ? pos.getLatitude() : null;
-        return new FlightDatum(icao, avg(times), lon, lat, avg(altitudes), avg(velocities), avg(rateOfClimbs));
+        return new FlightDatum(icao, timeSum / flightData.size(), lon, lat, avg(altitudes), avg(velocities), avg(rateOfClimbs));
     }
 
     private static void addIfNotNull(List list, Object value) {
