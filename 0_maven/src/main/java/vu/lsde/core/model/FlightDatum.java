@@ -76,6 +76,7 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
 
     // GETTERS
 
+    @Override
     public String getIcao() {
         return icao;
     }

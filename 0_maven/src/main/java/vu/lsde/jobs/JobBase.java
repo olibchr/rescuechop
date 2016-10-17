@@ -5,7 +5,9 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
+import sun.management.Sensor;
 import vu.lsde.core.model.Flight;
 import vu.lsde.core.model.FlightDatum;
 import vu.lsde.core.model.ModelBase;
@@ -20,7 +22,7 @@ import java.util.TreeSet;
  */
 public abstract class JobBase {
 
-    // Common RDD operations
+    // Methods for loading RDDs
 
     /**
      * Loads SensorDatum objects from a CSV encoded file into an RDD
@@ -88,16 +90,14 @@ public abstract class JobBase {
         });
     }
 
+    // Common RDD transformations
+
     /**
      * Flatten an RDD containing iterables.
-     *
-     * @param bags
-     * @param <T>
-     * @return
      */
-    public static <T> JavaRDD<T> flatten(JavaRDD<Iterable<T>> bags) {
-        return bags.flatMap(new FlatMapFunction<Iterable<T>, T>() {
-            public Iterable<T> call(Iterable<T> ts) throws Exception {
+    public static <I extends Iterable<T>, T> JavaRDD<T> flatten(JavaRDD<I> bags) {
+        return bags.flatMap(new FlatMapFunction<I, T>() {
+            public I call(I ts) throws Exception {
                 return ts;
             }
         });
@@ -105,19 +105,27 @@ public abstract class JobBase {
 
     /**
      * Flatten a PairRDD containing iterable values.
-     *
-     * @param groups
-     * @param <S>
-     * @param <T>
-     * @return
      */
-    public static <S, T> JavaRDD<T> flatten(JavaPairRDD<S, Iterable<T>> groups) {
-        return groups.values().flatMap(new FlatMapFunction<Iterable<T>, T>() {
-            public Iterable<T> call(Iterable<T> ts) throws Exception {
+    public static <K, I extends Iterable<T>, T> JavaRDD<T> flatten(JavaPairRDD<K, I> groups) {
+        return groups.values().flatMap(new FlatMapFunction<I, T>() {
+            public Iterable<T> call(I ts) throws Exception {
                 return ts;
             }
         });
     }
+
+    /**
+     * Maps models to (icao, model) tuples.
+     */
+    public static <M extends ModelBase> JavaPairRDD<String, M> toIcaoModelPairs(final JavaRDD<M> sensorData) {
+        return sensorData.mapToPair(new PairFunction<M, String, M>() {
+            public Tuple2<String, M> call(M model) throws Exception {
+                return new Tuple2<>(model.getIcao(), model);
+            }
+        });
+    }
+
+    // Methods for saving RDDs
 
     /**
      * Save an RDD containing model objects as a CSV file.

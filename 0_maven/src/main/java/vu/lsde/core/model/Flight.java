@@ -20,6 +20,7 @@ public class Flight extends ModelBase {
         return this.id;
     }
 
+    @Override
     public String getIcao() {
         return this.icao;
     }

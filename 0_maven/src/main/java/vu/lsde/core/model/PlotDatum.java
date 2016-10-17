@@ -24,6 +24,7 @@ public class PlotDatum extends ModelBase implements Point {
 
     // GETTERS
 
+    @Override
     public String getIcao() {
         return icao;
     }

@@ -34,6 +34,7 @@ public class AircraftPosition extends ModelBase {
      *
      * @return
      */
+    @Override
     public String getIcao() {
         return this.icao;
     }

@@ -10,6 +10,8 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.storage.StorageLevel;
 import org.opensky.libadsb.msgs.*;
 import scala.Tuple2;
@@ -76,65 +78,90 @@ public class Sampler extends JobBase {
         }).cache();
         long usefulRecordsCount = sensorData.count();
 
-        // Group models by icao
-        JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData.groupBy(new Function<SensorDatum, String>() {
-            public String call(SensorDatum sensorDatum) {
-                return sensorDatum.getIcao();
+        JavaPairRDD<String, SensorDatum> pairs = sensorData.mapToPair(new PairFunction<SensorDatum, String, SensorDatum>() {
+            public Tuple2<String, SensorDatum> call(SensorDatum sensorDatum) throws Exception {
+                return new Tuple2<>(sensorDatum.getIcao(), sensorDatum);
+            }
+        });
+
+        JavaPairRDD<String, List<SensorDatum>> sensorDataByAircraft = pairs.aggregateByKey(new ArrayList<SensorDatum>(), new Function2<List<SensorDatum>, SensorDatum, List<SensorDatum>>() {
+            @Override
+            public List<SensorDatum> call(List<SensorDatum> sensorData, SensorDatum sensorDatum) throws Exception {
+                if (sensorData == null)
+                    return null;
+
+                ModeSReply decodedMessage = sensorDatum.getDecodedMessage();
+                if (decodedMessage instanceof AltitudeReply) {
+                    AltitudeReply msg = (AltitudeReply) decodedMessage;
+                    if (msg.getAltitude() != null && msg.getAltitude() > 3000) {
+                        sensorData = null;
+                    }
+                } else if (decodedMessage instanceof CommBAltitudeReply) {
+                    CommBAltitudeReply msg = (CommBAltitudeReply) decodedMessage;
+                    if (msg.getAltitude() != null && msg.getAltitude() > 3000) {
+                        sensorData = null;
+                    }
+                } else if (decodedMessage instanceof AirbornePositionMsg) {
+                    AirbornePositionMsg msg = (AirbornePositionMsg) decodedMessage;
+                    if (msg.hasAltitude() && msg.getAltitude() > 3000) {
+                        sensorData = null;
+                    }
+                } else if (decodedMessage instanceof AirspeedHeadingMsg) {
+                    AirspeedHeadingMsg msg = (AirspeedHeadingMsg) decodedMessage;
+                    if (msg.hasAirspeedInfo() && msg.getAirspeed() > 120) {
+                        sensorData = null;
+                    }
+                } else if (decodedMessage instanceof VelocityOverGroundMsg) {
+                    VelocityOverGroundMsg msg = (VelocityOverGroundMsg) decodedMessage;
+                    if (msg.hasVelocityInfo() && msg.getVelocity() > 120) {
+                        sensorData = null;
+                    }
+                } else if (decodedMessage instanceof IdentificationMsg) {
+                    IdentificationMsg msg = (IdentificationMsg) decodedMessage;
+                    if (msg.getEmitterCategory() != 0 && !msg.getCategoryDescription().equals("Rotorcraft")) {
+                        sensorData = null;
+                    }
+                } else if (decodedMessage instanceof MilitaryExtendedSquitter) {
+                    sensorData = null;
+                }
+
+                if (sensorData != null) {
+                    sensorData.add(sensorDatum);
+                }
+                return sensorData;
+            }
+        }, new Function2<List<SensorDatum>, List<SensorDatum>, List<SensorDatum>>() {
+            @Override
+            public List<SensorDatum> call(List<SensorDatum> list1, List<SensorDatum> list2) throws Exception {
+                List<SensorDatum> result = null;
+                if (list1 != null && list2 != null) {
+                    result = new ArrayList<>();
+                    result.addAll(list1);
+                    result.addAll(list2);
+                }
+                return result;
             }
         }).cache();
         long aircraftCount = sensorDataByAircraft.count();
 
-        // Find aircraft flying lower than 3km, slower than 90m/s, not military, and only rotorcrafts or unidentified
-        JavaPairRDD<String, Iterable<SensorDatum>> possibleHelicopters = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
-            public Boolean call(Tuple2<String, Iterable<SensorDatum>> tuple) throws Exception {
-                int airborneMsgCount = 0;
-                for (SensorDatum sd: tuple._2) {
-                    ModeSReply decodedMessage = sd.getDecodedMessage();
-                    if (decodedMessage instanceof AltitudeReply) {
-                        AltitudeReply msg = (AltitudeReply) decodedMessage;
-                        if (msg.getAltitude() != null && msg.getAltitude() > 3000) {
-                            return false;
+        JavaPairRDD<String, List<SensorDatum>> sensorDataByPotentialHelis = sensorDataByAircraft.filter(new Function<Tuple2<String, List<SensorDatum>>, Boolean>() {
+            @Override
+            public Boolean call(Tuple2<String, List<SensorDatum>> t) throws Exception {
+                if (t._2 != null) {
+                    for (SensorDatum sd : t._2) {
+                        ModeSReply decodedMessage = sd.getDecodedMessage();
+                        if (decodedMessage instanceof AirbornePositionMsg) {
+                            return true;
                         }
-                        airborneMsgCount++;
-                    } else if (decodedMessage instanceof CommBAltitudeReply) {
-                        CommBAltitudeReply msg = (CommBAltitudeReply) decodedMessage;
-                        if (msg.getAltitude() != null && msg.getAltitude() > 3000) {
-                            return false;
-                        }
-                        airborneMsgCount++;
-                    } else if (decodedMessage instanceof AirbornePositionMsg) {
-                        AirbornePositionMsg msg = (AirbornePositionMsg) decodedMessage;
-                        if (msg.hasAltitude() && msg.getAltitude() > 3000) {
-                            return false;
-                        }
-                        airborneMsgCount++;
-                    } else if (decodedMessage instanceof AirspeedHeadingMsg) {
-                        AirspeedHeadingMsg msg = (AirspeedHeadingMsg) decodedMessage;
-                        if (msg.hasAirspeedInfo() && msg.getAirspeed() > 120) {
-                            return false;
-                        }
-                        airborneMsgCount++;
-                    } else if (decodedMessage instanceof VelocityOverGroundMsg) {
-                        VelocityOverGroundMsg msg = (VelocityOverGroundMsg) decodedMessage;
-                        if (msg.hasVelocityInfo() && msg.getVelocity() > 120) {
-                            return false;
-                        }
-                    } else if (decodedMessage instanceof IdentificationMsg) {
-                        IdentificationMsg msg = (IdentificationMsg) decodedMessage;
-                        if (msg.getEmitterCategory() != 0 && !msg.getCategoryDescription().equals("Rotorcraft")) {
-                            return false;
-                        }
-                    } else if (decodedMessage instanceof MilitaryExtendedSquitter) {
-                        return false;
                     }
                 }
-                return airborneMsgCount > 0;
+                return false;
             }
         }).cache();
-        long potentialHelicoptersCount = possibleHelicopters.count();
+        long potentialHelicoptersCount = sensorDataByPotentialHelis.count();
 
         // Flatten
-        JavaRDD<SensorDatum> sample = flatten(possibleHelicopters).cache();
+        JavaRDD<SensorDatum> sample = flatten(sensorDataByPotentialHelis).cache();
         long outputRecordsCount = sample.count();
 
         // To CSV

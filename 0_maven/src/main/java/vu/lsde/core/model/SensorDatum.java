@@ -77,6 +77,7 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
         return msg;
     }
 
+    @Override
     public String getIcao() {
         return this.icao;
     }

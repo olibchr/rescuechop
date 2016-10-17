@@ -10,6 +10,8 @@ public abstract class ModelBase implements Serializable {
 
     protected static final double NULL_DOUBLE = Double.MIN_VALUE;
 
+    public abstract String getIcao();
+
     public abstract String toCsv();
 
     protected final String joinCsvColumns(Object first, Object second, Object... rest) {
