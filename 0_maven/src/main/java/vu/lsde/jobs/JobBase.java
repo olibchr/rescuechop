@@ -117,10 +117,21 @@ public abstract class JobBase {
     /**
      * Maps models to (icao, model) tuples.
      */
-    public static <M extends ModelBase> JavaPairRDD<String, M> toIcaoModelPairs(final JavaRDD<M> sensorData) {
+    public static <M extends ModelBase> JavaPairRDD<String, M> toIcaoModelPairs(JavaRDD<M> sensorData) {
         return sensorData.mapToPair(new PairFunction<M, String, M>() {
             public Tuple2<String, M> call(M model) throws Exception {
                 return new Tuple2<>(model.getIcao(), model);
+            }
+        });
+    }
+
+    /**
+     * Groups models by icao.
+     */
+    public static <M extends ModelBase> JavaPairRDD<String, Iterable<M>> groupByIcao(JavaRDD<M> sensorData) {
+        return sensorData.groupBy(new Function<M, String>() {
+            public String call(M m) throws Exception {
+                return m.getIcao();
             }
         });
     }
