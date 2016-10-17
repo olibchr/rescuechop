@@ -149,8 +149,8 @@
       <file leaf-file-name="RotorcraftChecker.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/jobs/RotorcraftChecker.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="484">
-              <caret line="42" column="57" selection-start-line="42" selection-start-column="57" selection-end-line="42" selection-end-column="57" />
+            <state relative-caret-position="890">
+              <caret line="60" column="84" selection-start-line="60" selection-start-column="84" selection-end-line="60" selection-end-column="84" />
               <folding>
                 <element signature="e#1235#1490#0" expanded="true" />
                 <element signature="e#1489#1490#0" expanded="true" />
@@ -971,7 +971,7 @@
       <workItem from="1476651034132" duration="3615000" />
       <workItem from="1476655931897" duration="461000" />
       <workItem from="1476656439476" duration="3787000" />
-      <workItem from="1476699129792" duration="22078000" />
+      <workItem from="1476699129792" duration="22140000" />
     </task>
     <servers />
   </component>
@@ -1008,7 +1008,7 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="134372000" />
+    <option name="totallyTimeSpent" value="134434000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-9" y="-9" width="1938" height="1048" extended-state="6" />
@@ -1549,8 +1549,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/vu/lsde/jobs/RotorcraftChecker.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="484">
-          <caret line="42" column="57" selection-start-line="42" selection-start-column="57" selection-end-line="42" selection-end-column="57" />
+        <state relative-caret-position="890">
+          <caret line="60" column="84" selection-start-line="60" selection-start-column="84" selection-end-line="60" selection-end-column="84" />
           <folding>
             <element signature="e#1235#1490#0" expanded="true" />
             <element signature="e#1489#1490#0" expanded="true" />
