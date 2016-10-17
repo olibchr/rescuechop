@@ -11,11 +11,17 @@ import org.opensky.libadsb.msgs.ModeSReply;
 import scala.Tuple2;
 import vu.lsde.core.Config;
 import vu.lsde.core.io.SparkAvroReader;
+import vu.lsde.core.model.Flight;
+import vu.lsde.core.model.FlightDatum;
 import vu.lsde.core.model.SensorDatum;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static vu.lsde.jobs.functions.FlightDataFunctions.filterFlightDataMsgs;
+import static vu.lsde.jobs.functions.FlightDataFunctions.sensorDataToFlightData;
+import static vu.lsde.jobs.functions.FlightFunctions.*;
 
 /**
  * Takes a avro files containing sensor data as input, and then creates two sets of data: one with definite airplanes and
@@ -43,7 +49,6 @@ public class EvaluationSampler extends JobBase {
                 return SensorDatum.fromGenericRecord(genericRecord);
             }
         });
-        long inputRecordsCount = sensorData.count();
 
         // Filter out invalid messages
         sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
@@ -51,7 +56,6 @@ public class EvaluationSampler extends JobBase {
                 return sensorDatum.isValidMessage();
             }
         });
-        long validRecordsCount = sensorData.count();
 
         // Filter out messages we won't use anyway
         sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
@@ -76,8 +80,8 @@ public class EvaluationSampler extends JobBase {
                 return sensorDatum.getIcao();
             }
         });
-        long aircraftCount = sensorDataByAircraft.count();
 
+        // Split on helis and planes
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByHelis = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
             @Override
             public Boolean call(Tuple2<String, Iterable<SensorDatum>> t) throws Exception {
@@ -91,8 +95,6 @@ public class EvaluationSampler extends JobBase {
                 return false;
             }
         });
-        long heliCount = sensorDataByHelis.count();
-
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAirplanes = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
             @Override
             public Boolean call(Tuple2<String, Iterable<SensorDatum>> t) throws Exception {
@@ -106,28 +108,50 @@ public class EvaluationSampler extends JobBase {
                 return false;
             }
         });
-        long planeCount = sensorDataByAircraft.count();
 
         // Flatten
-        JavaRDD<SensorDatum> helis = flatten(sensorDataByHelis);
-        long outputHeliDataCount = helis.count();
+        JavaRDD<SensorDatum> heliSensorData = flatten(sensorDataByHelis);
+        JavaRDD<SensorDatum> planeSensorData = flatten(sensorDataByAirplanes);
 
-        JavaRDD<SensorDatum> airplanes = flatten(sensorDataByAirplanes);
-        long outputAirplaneDataCount = airplanes.count();
+        // Filter out irrelevant messages
+        heliSensorData = heliSensorData.filter(filterFlightDataMsgs);
+        planeSensorData = planeSensorData.filter(filterFlightDataMsgs);
+
+        // Group by icao
+        JavaPairRDD<String, Iterable<SensorDatum>> heliSensorDataByHeli = groupByIcao(heliSensorData);
+        JavaPairRDD<String, Iterable<SensorDatum>> planeSensorDataByPlane = groupByIcao(planeSensorData);
+
+        // Map to flight data
+        JavaPairRDD<String, Iterable<FlightDatum>> heliFlightDataByHeli = heliSensorDataByHeli.mapToPair(sensorDataToFlightData);
+        JavaPairRDD<String, Iterable<FlightDatum>> planeFlightDataByPlane = planeSensorDataByPlane.mapToPair(sensorDataToFlightData);
+
+        heliFlightDataByHeli = heliFlightDataByHeli.filter(new Function<Tuple2<String, Iterable<FlightDatum>>, Boolean>() {
+            public Boolean call(Tuple2<String, Iterable<FlightDatum>> t) throws Exception {
+                return t._2.iterator().hasNext();
+            }
+        });
+        planeFlightDataByPlane = planeFlightDataByPlane.filter(new Function<Tuple2<String, Iterable<FlightDatum>>, Boolean>() {
+            public Boolean call(Tuple2<String, Iterable<FlightDatum>> t) throws Exception {
+                return t._2.iterator().hasNext();
+            }
+        });
+
+        // Map to flights (splitting on time)
+        JavaRDD<Flight> heliFlights = flatten(heliFlightDataByHeli.mapToPair(splitFlightDataToFlightsOnTime));
+        JavaRDD<Flight> planeFlights = flatten(planeFlightDataByPlane.mapToPair(splitFlightDataToFlightsOnTime));
+
+        // Filter out short flights, split remaining flights on altitude or distance, filter again on short flights
+        heliFlights = heliFlights.filter(isLongFlight).filter(hasPositionData)
+                .flatMap(splitFlightsOnAltitudeOrDistance).filter(isLongFlight);
+        planeFlights = planeFlights.filter(isLongFlight).filter(hasPositionData)
+                .flatMap(splitFlightsOnAltitudeOrDistance).filter(isLongFlight);
 
         // To CSV
-        saveAsCsv(helis, outputPath + "_helis");
-        saveAsCsv(airplanes, outputPath + "_planes");
+        saveAsCsv(heliFlights, outputPath + "_heli_flights");
+        saveAsCsv(planeFlights, outputPath + "_plane_flights");
 
         // Print statistics
-        List<String> statistics = new ArrayList<>();
-        statistics.add(numberOfItemsStatistic("raw records              ", inputRecordsCount));
-        statistics.add(numberOfItemsStatistic("valid records            ", validRecordsCount));
-        statistics.add(numberOfItemsStatistic("unique aircraft          ", aircraftCount));
-        statistics.add(numberOfItemsStatistic("helicopters              ", heliCount));
-        statistics.add(numberOfItemsStatistic("airplanes                ", planeCount));
-        statistics.add(numberOfItemsStatistic("messages in heli sample  ", outputHeliDataCount));
-        statistics.add(numberOfItemsStatistic("messages in plane sample ", outputAirplaneDataCount));
-        saveStatisticsAsTextFile(sc, outputPath, statistics);
+//        List<String> statistics = new ArrayList<>();
+//        saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 }

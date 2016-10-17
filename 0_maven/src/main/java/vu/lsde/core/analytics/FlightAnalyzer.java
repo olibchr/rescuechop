@@ -44,41 +44,41 @@ public class FlightAnalyzer {
             }
 
             // Now check using lat/long data
-            airborne = null;
-            List<Position> positions = new ArrayList<>();
-            for (FlightDatum fd : flightData) {
-                if (fd.hasAltitude()) {
-                    airborne = fd.getAltitude() > 100;
-                    if (!airborne) {
-                        break;
-                    }
-                }
-                if (fd.hasPosition()) {
-                    positions.add(fd.getPosition());
-                }
-            }
-            Position center = Geo.findCentralPosition(positions);
-            for (Position position : positions) {
-                if (position.distanceTo(center) < 50) {
-                    return true;
-                }
-            }
+//            airborne = null;
+//            List<Position> positions = new ArrayList<>();
+//            for (FlightDatum fd : flightData) {
+//                if (fd.hasAltitude()) {
+//                    airborne = fd.getAltitude() > 100;
+//                    if (!airborne) {
+//                        break;
+//                    }
+//                }
+//                if (fd.hasPosition()) {
+//                    positions.add(fd.getPosition());
+//                }
+//            }
+//            Position center = Geo.findCentralPosition(positions);
+//            for (Position position : positions) {
+//                if (position.distanceTo(center) < 50) {
+//                    return true;
+//                }
+//            }
         }
 
         return false;
     }
 
     public static boolean hadHighClimbingAngle(Flight flight) {
-        double maxAngle = Math.toRadians(25);
-        for (FlightDatum fd : flight.getFlightData()) {
-            if (fd.hasVelocity() && fd.hasRateOfClimb()) {
-                double velocity = fd.getVelocity();
-                double roc = fd.getRateOfClimb();
-                if (Math.atan(roc / velocity) > maxAngle) {
-                    return true;
-                }
-            }
-        }
+//        double maxAngle = Math.toRadians(25);
+//        for (FlightDatum fd : flight.getFlightData()) {
+//            if (fd.hasVelocity() && fd.hasRateOfClimb()) {
+//                double velocity = fd.getVelocity();
+//                double roc = fd.getRateOfClimb();
+//                if (Math.atan(roc / velocity) > maxAngle) {
+//                    return true;
+//                }
+//            }
+//        }
         return false;
     }
 }
