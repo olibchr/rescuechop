@@ -23,7 +23,7 @@ public class RotorcraftChecker extends JobBase {
         String inputPath = args[0];
         String outputPath = args[1];
 
-        SparkConf sparkConf = new SparkConf().setAppName("LSDE09 IdentificationChecker");
+        SparkConf sparkConf = new SparkConf().setAppName("LSDE09 RotorcraftChecker");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Map to model
