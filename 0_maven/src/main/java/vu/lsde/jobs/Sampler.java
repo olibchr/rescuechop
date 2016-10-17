@@ -49,7 +49,7 @@ public class Sampler extends JobBase {
             public SensorDatum call(GenericRecord genericRecord) throws Exception {
                 return SensorDatum.fromGenericRecord(genericRecord);
             }
-        }).cache();
+        });
         long inputRecordsCount = sensorData.count();
 
         // Filter out invalid messages
@@ -57,7 +57,7 @@ public class Sampler extends JobBase {
             public Boolean call(SensorDatum sensorDatum) throws Exception {
                 return sensorDatum.isValidMessage();
             }
-        }).cache();
+        });
         long validRecordsCount = sensorData.count();
 
         // Filter out messages we won't use anyway
@@ -75,7 +75,7 @@ public class Sampler extends JobBase {
                 }
                 return true;
             }
-        }).cache();
+        });
         long usefulRecordsCount = sensorData.count();
 
         JavaPairRDD<String, SensorDatum> pairs = sensorData.mapToPair(new PairFunction<SensorDatum, String, SensorDatum>() {
@@ -141,7 +141,7 @@ public class Sampler extends JobBase {
                 }
                 return result;
             }
-        }).cache();
+        });
         long aircraftCount = sensorDataByAircraft.count();
 
         JavaPairRDD<String, List<SensorDatum>> sensorDataByPotentialHelis = sensorDataByAircraft.filter(new Function<Tuple2<String, List<SensorDatum>>, Boolean>() {
@@ -157,11 +157,11 @@ public class Sampler extends JobBase {
                 }
                 return false;
             }
-        }).cache();
+        });
         long potentialHelicoptersCount = sensorDataByPotentialHelis.count();
 
         // Flatten
-        JavaRDD<SensorDatum> sample = flatten(sensorDataByPotentialHelis).cache();
+        JavaRDD<SensorDatum> sample = flatten(sensorDataByPotentialHelis);
         long outputRecordsCount = sample.count();
 
         // To CSV
