@@ -125,16 +125,22 @@ public class EvaluationSampler extends JobBase {
         JavaPairRDD<String, Iterable<FlightDatum>> heliFlightDataByHeli = heliSensorDataByHeli.mapToPair(sensorDataToFlightData);
         JavaPairRDD<String, Iterable<FlightDatum>> planeFlightDataByPlane = planeSensorDataByPlane.mapToPair(sensorDataToFlightData);
 
-        heliFlightDataByHeli = heliFlightDataByHeli.filter(new Function<Tuple2<String, Iterable<FlightDatum>>, Boolean>() {
+        // Filter on speed and altitude
+        final Function<Tuple2<String, Iterable<FlightDatum>>, Boolean> speedAndAltitude = new Function<Tuple2<String, Iterable<FlightDatum>>, Boolean>() {
             public Boolean call(Tuple2<String, Iterable<FlightDatum>> t) throws Exception {
-                return t._2.iterator().hasNext();
+                boolean hasData = false;
+                for (FlightDatum fd : t._2) {
+                    hasData = true;
+                    if (fd.hasAltitude() && fd.getAltitude() > 3000)
+                        return false;
+                    if (fd.hasVelocity() && fd.getVelocity() > 120)
+                        return false;
+                }
+                return hasData;
             }
-        });
-        planeFlightDataByPlane = planeFlightDataByPlane.filter(new Function<Tuple2<String, Iterable<FlightDatum>>, Boolean>() {
-            public Boolean call(Tuple2<String, Iterable<FlightDatum>> t) throws Exception {
-                return t._2.iterator().hasNext();
-            }
-        });
+        };
+        heliFlightDataByHeli = heliFlightDataByHeli.filter(speedAndAltitude);
+        planeFlightDataByPlane = planeFlightDataByPlane.filter(speedAndAltitude);
 
         // Map to flights (splitting on time)
         JavaRDD<Flight> heliFlights = flatten(heliFlightDataByHeli.mapToPair(splitFlightDataToFlightsOnTime));

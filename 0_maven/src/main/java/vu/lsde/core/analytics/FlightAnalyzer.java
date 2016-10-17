@@ -69,16 +69,16 @@ public class FlightAnalyzer {
     }
 
     public static boolean hadHighClimbingAngle(Flight flight) {
-//        double maxAngle = Math.toRadians(25);
-//        for (FlightDatum fd : flight.getFlightData()) {
-//            if (fd.hasVelocity() && fd.hasRateOfClimb()) {
-//                double velocity = fd.getVelocity();
-//                double roc = fd.getRateOfClimb();
-//                if (Math.atan(roc / velocity) > maxAngle) {
-//                    return true;
-//                }
-//            }
-//        }
+        double maxAngle = Math.toRadians(45);
+        for (FlightDatum fd : flight.getFlightData()) {
+            if (fd.hasVelocity() && fd.hasRateOfClimb()) {
+                double velocity = fd.getVelocity();
+                double roc = fd.getRateOfClimb();
+                if (Math.atan(roc / velocity) > maxAngle) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 }
