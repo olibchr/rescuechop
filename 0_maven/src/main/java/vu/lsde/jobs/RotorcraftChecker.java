@@ -40,7 +40,6 @@ public class RotorcraftChecker extends JobBase {
 
         // Group models by icao
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = groupByIcao(sensorData);
-        long aircraftCount = sensorDataByAircraft.count();
 
         // Filter out all aircraft that are explicitly rotorcrafts
         sensorDataByAircraft = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
@@ -60,7 +59,6 @@ public class RotorcraftChecker extends JobBase {
         List<String> statistics = new ArrayList<String>();
         statistics.add(numberOfItemsStatistic("raw records", recordsCount));
         statistics.add(numberOfItemsStatistic("valid records", usefulRecordsCount));
-        statistics.add(numberOfItemsStatistic("unique aircraft", aircraftCount));
         statistics.add(numberOfItemsStatistic("definite helicopters", rotorcraftCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
