@@ -16,6 +16,7 @@ import java.util.List;
 
 import static vu.lsde.jobs.JobBase.flatten;
 import static vu.lsde.jobs.functions.ClassifierFunctions.classifyHelicoperFlights;
+import static vu.lsde.jobs.functions.FlightDataFunctions.mergeFlightData;
 import static vu.lsde.jobs.functions.FlightDataFunctions.onlyFlightDataMsgs;
 import static vu.lsde.jobs.functions.FlightDataFunctions.sensorDataByAircraftToFlightDataByAircraft;
 import static vu.lsde.jobs.functions.FlightFunctions.noShortFlight;
@@ -47,6 +48,7 @@ public class HelicopterIdentifier extends JobBase {
                 .groupBy(JobBase.<SensorDatum>modelGetIcao())
                 .filter(rotorcraftSensorData())
                 .mapToPair(sensorDataByAircraftToFlightDataByAircraft())
+                .mapToPair(mergeFlightData())
                 .mapToPair(splitFlightDataOnTime());
         long rotorcraftCount = rotorcraftFlightsByRotorcraft.count();
 
@@ -62,6 +64,7 @@ public class HelicopterIdentifier extends JobBase {
                 .groupBy(JobBase.<SensorDatum>modelGetIcao())
                 .subtractByKey(rotorcraftFlightsByRotorcraft)
                 .mapToPair(sensorDataByAircraftToFlightDataByAircraft())
+                .mapToPair(mergeFlightData())
                 .mapToPair(splitFlightDataOnTime());
         long otherAircraftCount = otherFlightsByAircraft.count();
 

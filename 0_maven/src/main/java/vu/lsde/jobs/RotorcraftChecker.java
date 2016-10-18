@@ -1,20 +1,22 @@
 package vu.lsde.jobs;
 
-import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
-import org.opensky.libadsb.msgs.IdentificationMsg;
+import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.PairFunction;
+import org.opensky.libadsb.msgs.*;
 import scala.Tuple2;
-import vu.lsde.core.Config;
-import vu.lsde.core.io.SparkAvroReader;
 import vu.lsde.core.model.SensorDatum;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static vu.lsde.jobs.functions.SensorDataFunctions.rotorcraftSensorData;
+import static vu.lsde.jobs.functions.SensorDataFunctions.usefulSensorData;
+import static vu.lsde.jobs.functions.SensorDataFunctions.validSensorData;
 
 /**
  * Job that takes sensor data as input, groups it by ICAO, and checks each aircraft for ADS-B identifcation messages.
@@ -29,49 +31,72 @@ public class RotorcraftChecker extends JobBase {
         SparkConf sparkConf = new SparkConf().setAppName("LSDE09 RotorcraftChecker");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
-        // Map to model
         // Load records
-        JavaRDD<GenericRecord> records = SparkAvroReader.loadJavaRDD(sc, inputPath, Config.OPEN_SKY_SCHEMA);
-
-        // Map to model
-        JavaRDD<SensorDatum> sensorData = records.map(new Function<GenericRecord, SensorDatum>() {
-            public SensorDatum call(GenericRecord genericRecord) throws Exception {
-                return SensorDatum.fromGenericRecord(genericRecord);
-            }
-        });
-
+        JavaRDD<SensorDatum> sensorData = readSensorDataAvro(sc, inputPath);
         long recordsCount = sensorData.count();
 
-        // Filter out invalid messages
-        sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
-            public Boolean call(SensorDatum sensorDatum) throws Exception {
-                return sensorDatum.isValidMessage() || sensorDatum.getDecodedMessage() instanceof IdentificationMsg;
-            }
-        });
-        long usefulRecordsCount = sensorData.count();
-
         // Group models by icao
-        JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = groupByIcao(sensorData);
-
-        // Filter out all aircraft that are explicitly rotorcrafts
-        sensorDataByAircraft = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
-            public Boolean call(Tuple2<String, Iterable<SensorDatum>> tuple) throws Exception {
-                for (SensorDatum sd: tuple._2) {
-                    if (sd.getDecodedMessage() instanceof IdentificationMsg) {
-                        IdentificationMsg msg = (IdentificationMsg) sd.getDecodedMessage();
-                        return msg.getCategoryDescription().equals("Rotorcraft");
-                    }
-                }
-                return false;
-            }
-        });
+        JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData
+                .filter(validSensorData())
+                .filter(usefulSensorData())
+                .groupBy(JobBase.<SensorDatum>modelGetIcao())
+                .filter(rotorcraftSensorData());
         long rotorcraftCount = sensorDataByAircraft.count();
+
+        // Find maximum speed and altitude
+        Tuple2<Double, Double> maxAltitudeVelocity = flatten(sensorDataByAircraft)
+                .mapToPair(sensorDatumToAltitudeVelocityTuple())
+                .fold(zeroTuple(), maxAltitudeVelocityTuple());
 
         // Print statistics
         List<String> statistics = new ArrayList<String>();
         statistics.add(numberOfItemsStatistic("raw records", recordsCount));
-        statistics.add(numberOfItemsStatistic("valid records", usefulRecordsCount));
         statistics.add(numberOfItemsStatistic("definite helicopters", rotorcraftCount));
+        statistics.add("Maximum altitude: " + maxAltitudeVelocity._1);
+        statistics.add("Maximum speed: " + maxAltitudeVelocity._2);
         saveStatisticsAsTextFile(sc, outputPath, statistics);
+    }
+
+    // FUNCTIONS
+
+    private static PairFunction<SensorDatum, Double, Double> sensorDatumToAltitudeVelocityTuple() {
+        return new PairFunction<SensorDatum, Double, Double>() {
+            @Override
+            public Tuple2<Double, Double> call(SensorDatum sd) throws Exception {
+                ModeSReply modeSReply = sd.getDecodedMessage();
+                double altitude = 0;
+                double velocity = 0;
+                if (modeSReply instanceof AirspeedHeadingMsg) {
+                    AirspeedHeadingMsg msg = (AirspeedHeadingMsg) modeSReply;
+                    velocity = msg.hasAirspeedInfo() ? msg.getAirspeed() : 0;
+                } else if (modeSReply instanceof VelocityOverGroundMsg) {
+                    VelocityOverGroundMsg msg = (VelocityOverGroundMsg) modeSReply;
+                    velocity = msg.hasVelocityInfo() ? msg.getVelocity() : 0;
+                } else if (modeSReply instanceof AirbornePositionMsg) {
+                    AirbornePositionMsg msg = (AirbornePositionMsg) modeSReply;
+                    altitude = msg.hasAltitude() ? msg.getAltitude() : 0;
+                } else if (modeSReply instanceof AltitudeReply) {
+                    AltitudeReply msg = (AltitudeReply) modeSReply;
+                    altitude = msg.getAltitude() != null ? msg.getAltitude() : 0;
+                } else if (modeSReply instanceof CommBAltitudeReply) {
+                    CommBAltitudeReply msg = (CommBAltitudeReply) modeSReply;
+                    altitude = msg.getAltitude() != null ? msg.getAltitude() : 0;
+                }
+                return new Tuple2<>(altitude, velocity);
+            }
+        };
+    }
+
+    private static Tuple2<Double, Double> zeroTuple() {
+        return new Tuple2<>(0d, 0d);
+    }
+
+    private static Function2<Tuple2<Double, Double>, Tuple2<Double, Double>, Tuple2<Double, Double>> maxAltitudeVelocityTuple() {
+        return new Function2<Tuple2<Double, Double>, Tuple2<Double, Double>, Tuple2<Double, Double>>() {
+            @Override
+            public Tuple2<Double, Double> call(Tuple2<Double, Double> t1, Tuple2<Double, Double> t2) throws Exception {
+                return new Tuple2<>(Math.max(t1._1, t2._1), Math.max(t1._2, t2._2));
+            }
+        };
     }
 }

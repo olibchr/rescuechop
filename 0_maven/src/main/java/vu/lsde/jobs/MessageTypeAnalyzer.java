@@ -79,10 +79,10 @@ public class MessageTypeAnalyzer extends JobBase {
             int count = accumulatorsByType.get(subtype).value();
             statistics.add(numberOfItemsStatistic(subtype.name(), count, recordsCount));
         }
-        for (Tuple2<String, Long> t : daysCount.collect()) {
-            statistics.add(numberOfItemsStatistic("data on " + t._1, t._2));
-        }
         statistics.add(numberOfItemsStatistic("invalid", invalidAcc.value(), recordsCount));
+        for (Tuple2<String, Long> t : daysCount.collect()) {
+            statistics.add(numberOfItemsStatistic("data on " + t._1, t._2, recordsCount));
+        }
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }
 
@@ -139,7 +139,7 @@ public class MessageTypeAnalyzer extends JobBase {
             @Override
             public Tuple2<String, Long> call(Tuple2<Long, Long> t) throws Exception {
                 Date date = new Date();
-                date.setTime(t._1);
+                date.setTime(t._1 * 86400 * 1000);
                 String prettyTime = new SimpleDateFormat("YYYY-MM-dd").format(date);
                 return new Tuple2<>(prettyTime, t._2);
             }
