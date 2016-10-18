@@ -1,5 +1,6 @@
 package vu.lsde.jobs;
 
+import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -7,6 +8,8 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.opensky.libadsb.msgs.IdentificationMsg;
 import scala.Tuple2;
+import vu.lsde.core.Config;
+import vu.lsde.core.io.SparkAvroReader;
 import vu.lsde.core.model.SensorDatum;
 
 import java.io.IOException;
@@ -27,7 +30,16 @@ public class RotorcraftChecker extends JobBase {
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Map to model
-        JavaRDD<SensorDatum> sensorData = readSensorDataCsv(sc, inputPath);
+        // Load records
+        JavaRDD<GenericRecord> records = SparkAvroReader.loadJavaRDD(sc, inputPath, Config.OPEN_SKY_SCHEMA);
+
+        // Map to model
+        JavaRDD<SensorDatum> sensorData = records.map(new Function<GenericRecord, SensorDatum>() {
+            public SensorDatum call(GenericRecord genericRecord) throws Exception {
+                return SensorDatum.fromGenericRecord(genericRecord);
+            }
+        });
+
         long recordsCount = sensorData.count();
 
         // Filter out invalid messages

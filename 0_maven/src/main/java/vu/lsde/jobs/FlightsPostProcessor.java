@@ -36,6 +36,10 @@ public class FlightsPostProcessor extends JobBase {
             }
         });
 
+        //JavaPairRDD<String, Iterable<plotDatum>> DataByAircraft = groupByIcao(plotData);
+
+        //JavaRDD<String> maxDist = DataByAircraft.filter(new Function<PlotDatum>())
+
         // Convert to CSV
         JavaRDD<String> csv = plotData.map(new Function<PlotDatum, String>() {
             public String call(PlotDatum plotDatum) throws Exception {
