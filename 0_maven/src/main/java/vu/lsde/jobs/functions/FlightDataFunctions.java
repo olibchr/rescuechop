@@ -17,9 +17,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.SortedMap;
 
-/**
- * Created by richa on 17/10/2016.
- */
 public class FlightDataFunctions {
     public static Function<SensorDatum, Boolean> onlyFlightDataMsgs() {
         return new Function<SensorDatum, Boolean>() {
@@ -52,12 +49,20 @@ public class FlightDataFunctions {
 
                     if (message instanceof AirbornePositionMsg || message instanceof SurfacePositionMsg) {
                         Position position;
-                        Position sensorPosition = new Position(sd.getSensorLongitude(), sd.getSensorLatitude(), null);
+                        Position sensorPosition = sd.getSensorPosition();
 
                         if (message instanceof AirbornePositionMsg) {
-                            position = decoder.decodePosition(sd.getTimeAtServer(), sensorPosition, (AirbornePositionMsg) message);
+                            if (sensorPosition != null) {
+                                position = decoder.decodePosition(sd.getTimeAtServer(), sensorPosition, (AirbornePositionMsg) message);
+                            } else {
+                                position = decoder.decodePosition(sd.getTimeAtServer(), (AirbornePositionMsg) message);
+                            }
                         } else {
-                            position = decoder.decodePosition(sd.getTimeAtServer(), sensorPosition, (SurfacePositionMsg) message);
+                            if (sensorPosition != null) {
+                                position = decoder.decodePosition(sd.getTimeAtServer(), sensorPosition, (SurfacePositionMsg) message);
+                            } else {
+                                position = decoder.decodePosition(sd.getTimeAtServer(), (SurfacePositionMsg) message);
+                            }
                         }
                         if (position != null && position.isReasonable()) {
                             flightData.add(new FlightDatum(icao, sd.getTimeAtServer(), position));

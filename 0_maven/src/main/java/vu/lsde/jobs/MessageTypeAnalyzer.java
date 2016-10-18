@@ -36,7 +36,7 @@ public class MessageTypeAnalyzer extends JobBase {
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Load sensor data
-        JavaRDD<SensorDatum> sensorData = readSensorDataAvro(sc, inputPath);
+        JavaRDD<SensorDatum> sensorData = readSensorDataAvro(sc, inputPath).cache();
         long recordsCount = sensorData.count();
 
         // Accumulators for counting

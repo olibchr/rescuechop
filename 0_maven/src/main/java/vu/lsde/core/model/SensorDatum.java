@@ -4,6 +4,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.opensky.libadsb.Decoder;
+import org.opensky.libadsb.Position;
 import org.opensky.libadsb.exceptions.BadFormatException;
 import org.opensky.libadsb.exceptions.UnspecifiedFormatError;
 import org.opensky.libadsb.msgs.ModeSReply;
@@ -65,6 +66,16 @@ public class SensorDatum extends ModelBase implements Comparable<SensorDatum> {
 
     public boolean isValidMessage() {
         return this.icao != null;
+    }
+
+    public Position getSensorPosition() {
+        Double longitude = getSensorLongitude();
+        Double latitude = getSensorLatitude();
+        if (longitude == null || latitude == null) {
+            return null;
+        } else {
+            return new Position(longitude, latitude, null);
+        }
     }
 
     public ModeSReply getDecodedMessage() {
