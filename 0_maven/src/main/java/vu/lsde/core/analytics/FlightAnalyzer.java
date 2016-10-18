@@ -18,13 +18,13 @@ public class FlightAnalyzer {
             Boolean lowSpeed = null;
             for (FlightDatum fd : flightData) {
                 if (fd.hasAltitude()) {
-                    airborne = fd.getAltitude() > 50;
+                    airborne = fd.getAltitude() > 200;
                     if (!airborne) {
                         break;
                     }
                 }
                 if (fd.hasVelocity()) {
-                    lowSpeed = fd.getVelocity() < 15;
+                    lowSpeed = fd.getVelocity() < 10;
                     if (!lowSpeed) {
                         break;
                     }
@@ -72,7 +72,7 @@ public class FlightAnalyzer {
     }
 
     public static boolean hadHighClimbingAngle(Flight flight) {
-        double maxAngle = Math.toRadians(45);
+        double maxAngle = Math.toRadians(55);
         for (FlightDatum fd : flight.getFlightData()) {
             if (fd.hasVelocity() && fd.hasRateOfClimb()) {
                 double velocity = fd.getVelocity();

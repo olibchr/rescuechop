@@ -131,7 +131,7 @@ public class EvaluationSampler extends JobBase {
                 boolean hasData = false;
                 for (FlightDatum fd : t._2) {
                     hasData = true;
-                    if (fd.hasAltitude() && fd.getAltitude() > 3000)
+                    if (fd.hasAltitude() && fd.getAltitude() > 4000)
                         return false;
                     if (fd.hasVelocity() && fd.getVelocity() > 120)
                         return false;
