@@ -2,3 +2,4 @@
 .idea/tasks.xml
 target/
 0_maven/target/
+2_data/*
