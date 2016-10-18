@@ -3,10 +3,8 @@ package vu.lsde.core.analytics;
 import org.opensky.libadsb.Position;
 import vu.lsde.core.model.Flight;
 import vu.lsde.core.model.FlightDatum;
-import vu.lsde.core.util.Geo;
 import vu.lsde.core.util.Grouping;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
 
@@ -20,7 +18,7 @@ public class FlightAnalyzer {
             Boolean lowSpeed = null;
             for (FlightDatum fd : flightData) {
                 if (fd.hasAltitude()) {
-                    airborne = fd.getAltitude() > 100;
+                    airborne = fd.getAltitude() > 50;
                     if (!airborne) {
                         break;
                     }
@@ -33,52 +31,57 @@ public class FlightAnalyzer {
                 }
             }
 
-            if (airborne == null)
+            if (airborne == null || !airborne)
                 continue;
 
-            if (lowSpeed != null) {
-                if (airborne && lowSpeed) {
-                    return true;
-                }
-                continue;
+            if (lowSpeed != null && lowSpeed) {
+                return true;
             }
 
             // Now check using lat/long data
-//            airborne = null;
-//            List<Position> positions = new ArrayList<>();
-//            for (FlightDatum fd : flightData) {
-//                if (fd.hasAltitude()) {
-//                    airborne = fd.getAltitude() > 100;
-//                    if (!airborne) {
-//                        break;
-//                    }
-//                }
-//                if (fd.hasPosition()) {
-//                    positions.add(fd.getPosition());
-//                }
-//            }
-//            Position center = Geo.findCentralPosition(positions);
-//            for (Position position : positions) {
-//                if (position.distanceTo(center) < 50) {
-//                    return true;
-//                }
-//            }
+            lowSpeed = null;
+            Position lastPosition = null;
+            double lastTime = 0;
+            for (FlightDatum fd : flightData) {
+                if (fd.hasPosition()) {
+                    Position position = fd.getPosition();
+                    double time = fd.getTime();
+                    if (lastPosition != null) {
+                        double distance = lastPosition.distanceTo(position);
+                        double timeSpan = time - lastTime;
+                        // Only calculate distance if there was not too much time between two points, otherwise
+                        // it will become too inaccurate
+                        if (timeSpan < 10) {
+                            lowSpeed = distance / timeSpan < 5;
+                        }
+                        if (lowSpeed != null && !lowSpeed) {
+                            break;
+                        }
+                    }
+                    lastPosition = position;
+                    lastTime = time;
+                }
+            }
+
+            if (lowSpeed != null && lowSpeed) {
+                return true;
+            }
         }
 
         return false;
     }
 
     public static boolean hadHighClimbingAngle(Flight flight) {
-//        double maxAngle = Math.toRadians(25);
-//        for (FlightDatum fd : flight.getFlightData()) {
-//            if (fd.hasVelocity() && fd.hasRateOfClimb()) {
-//                double velocity = fd.getVelocity();
-//                double roc = fd.getRateOfClimb();
-//                if (Math.atan(roc / velocity) > maxAngle) {
-//                    return true;
-//                }
-//            }
-//        }
+        double maxAngle = Math.toRadians(45);
+        for (FlightDatum fd : flight.getFlightData()) {
+            if (fd.hasVelocity() && fd.hasRateOfClimb()) {
+                double velocity = fd.getVelocity();
+                double roc = fd.getRateOfClimb();
+                if (Math.atan(roc / velocity) > maxAngle) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 }
