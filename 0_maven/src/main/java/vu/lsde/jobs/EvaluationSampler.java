@@ -1,6 +1,5 @@
 package vu.lsde.jobs;
 
-import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -9,19 +8,18 @@ import org.apache.spark.api.java.function.Function;
 import org.opensky.libadsb.msgs.IdentificationMsg;
 import org.opensky.libadsb.msgs.ModeSReply;
 import scala.Tuple2;
-import vu.lsde.core.Config;
-import vu.lsde.core.io.SparkAvroReader;
 import vu.lsde.core.model.Flight;
 import vu.lsde.core.model.FlightDatum;
 import vu.lsde.core.model.SensorDatum;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
-import static vu.lsde.jobs.functions.FlightDataFunctions.filterFlightDataMsgs;
-import static vu.lsde.jobs.functions.FlightDataFunctions.sensorDataToFlightData;
+import static vu.lsde.jobs.functions.FlightDataFunctions.onlyFlightDataMsgs;
+import static vu.lsde.jobs.functions.FlightDataFunctions.sensorDataByAircraftToFlightDataByAircraft;
 import static vu.lsde.jobs.functions.FlightFunctions.*;
+import static vu.lsde.jobs.functions.FlightFunctions.splitflightsOnLandingAndLiftoff;
+import static vu.lsde.jobs.functions.SensorDataFunctions.usefulSensorData;
+import static vu.lsde.jobs.functions.SensorDataFunctions.validSensorData;
 
 /**
  * Takes a avro files containing sensor data as input, and then creates two sets of data: one with definite airplanes and
@@ -40,46 +38,17 @@ public class EvaluationSampler extends JobBase {
 
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
-        // Load records
-        JavaRDD<GenericRecord> records = SparkAvroReader.loadJavaRDD(sc, inputPath, Config.OPEN_SKY_SCHEMA);
-
-        // Map to model
-        JavaRDD<SensorDatum> sensorData = records.map(new Function<GenericRecord, SensorDatum>() {
-            public SensorDatum call(GenericRecord genericRecord) throws Exception {
-                return SensorDatum.fromGenericRecord(genericRecord);
-            }
-        });
+        // Load sensor data
+        JavaRDD<SensorDatum> sensorData = readSensorDataAvro(sc, inputPath);
 
         // Filter out invalid messages
-        sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
-            public Boolean call(SensorDatum sensorDatum) throws Exception {
-                return sensorDatum.isValidMessage();
-            }
-        });
+        sensorData = sensorData.filter(validSensorData());
 
         // Filter out messages we won't use anyway
-        sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
-            public Boolean call(SensorDatum sensorDatum) throws Exception {
-                switch(sensorDatum.getDecodedMessage().getType()) {
-                    case MODES_REPLY:
-                    case SHORT_ACAS:
-                    case LONG_ACAS:
-                    case EXTENDED_SQUITTER:
-                    case COMM_D_ELM:
-                    case ADSB_EMERGENCY:
-                    case ADSB_TCAS:
-                        return false;
-                }
-                return true;
-            }
-        });
+        sensorData = sensorData.filter(usefulSensorData());
 
-        JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = sensorData.groupBy(new Function<SensorDatum, String>() {
-            @Override
-            public String call(SensorDatum sensorDatum) throws Exception {
-                return sensorDatum.getIcao();
-            }
-        });
+        // Group by icao
+        JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = groupByIcao(sensorData);
 
         // Split on helis and planes
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByHelis = sensorDataByAircraft.filter(new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
@@ -114,16 +83,16 @@ public class EvaluationSampler extends JobBase {
         JavaRDD<SensorDatum> planeSensorData = flatten(sensorDataByAirplanes);
 
         // Filter out irrelevant messages
-        heliSensorData = heliSensorData.filter(filterFlightDataMsgs);
-        planeSensorData = planeSensorData.filter(filterFlightDataMsgs);
+        heliSensorData = heliSensorData.filter(onlyFlightDataMsgs());
+        planeSensorData = planeSensorData.filter(onlyFlightDataMsgs());
 
         // Group by icao
         JavaPairRDD<String, Iterable<SensorDatum>> heliSensorDataByHeli = groupByIcao(heliSensorData);
         JavaPairRDD<String, Iterable<SensorDatum>> planeSensorDataByPlane = groupByIcao(planeSensorData);
 
         // Map to flight data
-        JavaPairRDD<String, Iterable<FlightDatum>> heliFlightDataByHeli = heliSensorDataByHeli.mapToPair(sensorDataToFlightData);
-        JavaPairRDD<String, Iterable<FlightDatum>> planeFlightDataByPlane = planeSensorDataByPlane.mapToPair(sensorDataToFlightData);
+        JavaPairRDD<String, Iterable<FlightDatum>> heliFlightDataByHeli = heliSensorDataByHeli.mapToPair(sensorDataByAircraftToFlightDataByAircraft());
+        JavaPairRDD<String, Iterable<FlightDatum>> planeFlightDataByPlane = planeSensorDataByPlane.mapToPair(sensorDataByAircraftToFlightDataByAircraft());
 
         // Filter on speed and altitude
         final Function<Tuple2<String, Iterable<FlightDatum>>, Boolean> speedAndAltitude = new Function<Tuple2<String, Iterable<FlightDatum>>, Boolean>() {
@@ -143,14 +112,14 @@ public class EvaluationSampler extends JobBase {
         planeFlightDataByPlane = planeFlightDataByPlane.filter(speedAndAltitude);
 
         // Map to flights (splitting on time)
-        JavaRDD<Flight> heliFlights = flatten(heliFlightDataByHeli.mapToPair(splitFlightDataToFlightsOnTime));
-        JavaRDD<Flight> planeFlights = flatten(planeFlightDataByPlane.mapToPair(splitFlightDataToFlightsOnTime));
+        JavaRDD<Flight> heliFlights = flatten(heliFlightDataByHeli.mapToPair(splitFlightDataOnTime()));
+        JavaRDD<Flight> planeFlights = flatten(planeFlightDataByPlane.mapToPair(splitFlightDataOnTime()));
 
         // Filter out short flights, split remaining flights on altitude or distance, filter again on short flights
-        heliFlights = heliFlights.filter(isLongFlight).filter(hasPositionData)
-                .flatMap(splitFlightsOnAltitudeOrDistance).filter(isLongFlight);
-        planeFlights = planeFlights.filter(isLongFlight).filter(hasPositionData)
-                .flatMap(splitFlightsOnAltitudeOrDistance).filter(isLongFlight);
+        heliFlights = heliFlights.filter(noShortFlight()).filter(hasPositionData())
+                .flatMap(splitflightsOnLandingAndLiftoff()).filter(noShortFlight());
+        planeFlights = planeFlights.filter(noShortFlight()).filter(hasPositionData())
+                .flatMap(splitflightsOnLandingAndLiftoff()).filter(noShortFlight());
 
         // To CSV
         saveAsCsv(heliFlights, outputPath + "_heli_flights");

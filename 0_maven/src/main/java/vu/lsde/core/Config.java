@@ -20,6 +20,11 @@ public class Config {
     public static final String OPEN_SKY_SAMPLE_DATA_PATH = HDFS_BASE_PATH + "user/lsde09/opensky_sample";
 
     /**
+     * The path to the helipad dataset.
+     */
+    public static final String HELIPAD_DATA_PATH = "4_data/europe_helipads.csv";
+
+    /**
      * The AVRO schema for the open sky dataset.
      */
     public static final Schema OPEN_SKY_SCHEMA = SchemaBuilder

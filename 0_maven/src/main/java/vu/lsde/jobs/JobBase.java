@@ -1,5 +1,6 @@
 package vu.lsde.jobs;
 
+import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -7,7 +8,8 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
-import sun.management.Sensor;
+import vu.lsde.core.Config;
+import vu.lsde.core.io.SparkAvroReader;
 import vu.lsde.core.model.Flight;
 import vu.lsde.core.model.FlightDatum;
 import vu.lsde.core.model.ModelBase;
@@ -23,6 +25,25 @@ import java.util.TreeSet;
 public abstract class JobBase {
 
     // Methods for loading RDDs
+
+    /**
+     * Loads SensorDatum objects from an Avro encoded file into an RDD
+     *
+     * @param sc
+     * @param inputPath
+     * @return
+     */
+    public static JavaRDD<SensorDatum> readSensorDataAvro(JavaSparkContext sc, String inputPath) {
+        // Load records
+        JavaRDD<GenericRecord> records = SparkAvroReader.loadJavaRDD(sc, inputPath, Config.OPEN_SKY_SCHEMA);
+
+        // Map to model
+        return records.map(new Function<GenericRecord, SensorDatum>() {
+            public SensorDatum call(GenericRecord genericRecord) throws Exception {
+                return SensorDatum.fromGenericRecord(genericRecord);
+            }
+        });
+    }
 
     /**
      * Loads SensorDatum objects from a CSV encoded file into an RDD
@@ -129,11 +150,7 @@ public abstract class JobBase {
      * Groups models by icao.
      */
     public static <M extends ModelBase> JavaPairRDD<String, Iterable<M>> groupByIcao(JavaRDD<M> sensorData) {
-        return sensorData.groupBy(new Function<M, String>() {
-            public String call(M m) throws Exception {
-                return m.getIcao();
-            }
-        });
+        return sensorData.groupBy(JobBase.<M>modelGetIcao());
     }
 
     // Methods for saving RDDs
@@ -167,4 +184,13 @@ public abstract class JobBase {
         sc.parallelize(statisticsLines, 1).saveAsTextFile(outputPath + "_stats");
     }
 
+    // Functions
+
+    protected static <M extends ModelBase> Function<M, String> modelGetIcao() {
+        return new Function<M, String>() {
+            public String call(M m) throws Exception {
+                return m.getIcao();
+            }
+        };
+    }
 }

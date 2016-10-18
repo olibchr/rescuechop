@@ -4,14 +4,15 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
-import scala.Tuple2;
+import org.apache.spark.broadcast.Broadcast;
+import org.opensky.libadsb.Position;
 import vu.lsde.core.model.Flight;
+import vu.lsde.core.services.HelipadPositionsService;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static vu.lsde.jobs.functions.ClassifierFunctions.classifyHelicopterFlights;
+import static vu.lsde.jobs.functions.ClassifierFunctions.classifyHelicoperFlights;
 
 public class FlightClassificationEvaluator extends JobBase {
     public static void main(String[] args) {
@@ -34,8 +35,9 @@ public class FlightClassificationEvaluator extends JobBase {
         long planeCount = planeFlightsByPlane.keys().distinct().count();
 
         // Classify
-        JavaPairRDD<String, Iterable<Flight>> truePositives = heliFlightsByHeli.filter(classifyHelicopterFlights);
-        JavaPairRDD<String, Iterable<Flight>> falsePositives = planeFlightsByPlane.filter(classifyHelicopterFlights);
+        final Broadcast<List<Position>> helipads = sc.broadcast(HelipadPositionsService.getHelipadPositions(sc));
+        JavaPairRDD<String, Iterable<Flight>> truePositives = heliFlightsByHeli.filter(classifyHelicoperFlights(helipads));
+        JavaPairRDD<String, Iterable<Flight>> falsePositives = planeFlightsByPlane.filter(classifyHelicoperFlights(helipads));
 
         long truePositivesCount = truePositives.keys().distinct().count();
         long falsePositivesCount = falsePositives.keys().distinct().count();

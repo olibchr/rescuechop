@@ -50,26 +50,26 @@ public class Flights extends JobBase {
         long aircraftCount = flightDataByAircraft.count();
 
         // Roughly group flight data into flights
-        JavaPairRDD<String, Iterable<Flight>> flightsByAircraft = flightDataByAircraft.mapToPair(FlightFunctions.splitFlightDataToFlightsOnTime);
+        JavaPairRDD<String, Iterable<Flight>> flightsByAircraft = flightDataByAircraft.mapToPair(FlightFunctions.splitFlightDataOnTime());
 
         // Flatten
         JavaRDD<Flight> flights = flatten(flightsByAircraft).cache();
         long splitTimeCount = flights.count();
 
         // Filter flights that are too short
-        flights = flights.filter(FlightFunctions.isLongFlight).cache();
+        flights = flights.filter(FlightFunctions.noShortFlight()).cache();
         long filterLong1Count = flights.count();
 
         // Filter flights that do not contain any position data
-        flights = flights.filter(FlightFunctions.hasPositionData).cache();
+        flights = flights.filter(FlightFunctions.hasPositionData()).cache();
         long flightsWithPositionCount = flights.count();
 
         // Split flights on altitude, or position if that's not possible
-        flights = flights.flatMap(FlightFunctions.splitFlightsOnAltitudeOrDistance).cache();
+        flights = flights.flatMap(FlightFunctions.splitflightsOnLandingAndLiftoff()).cache();
         long splitMovementCount = flights.count();
 
         // Filter flights that are too short
-        flights = flights.filter(FlightFunctions.isLongFlight).cache();
+        flights = flights.filter(FlightFunctions.noShortFlight()).cache();
         long filterLong2Count = flights.count();
 
         long outputAircraftCount = groupByIcao(flights).count();

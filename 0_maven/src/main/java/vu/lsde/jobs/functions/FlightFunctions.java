@@ -25,63 +25,71 @@ public class FlightFunctions {
 
     // FUNCTIONS
 
-    public static final PairFunction<Tuple2<String, Iterable<FlightDatum>>, String, Iterable<Flight>> splitFlightDataToFlightsOnTime = new PairFunction<Tuple2<String, Iterable<FlightDatum>>, String, Iterable<Flight>>() {
-        public Tuple2<String, Iterable<Flight>> call(Tuple2<String, Iterable<FlightDatum>> tuple) throws Exception {
-            String icao = tuple._1;
-            List<FlightDatum> flightDataList = Lists.newArrayList(tuple._2);
-            Collections.sort(flightDataList);
+    public static PairFunction<Tuple2<String, Iterable<FlightDatum>>, String, Iterable<Flight>> splitFlightDataOnTime() {
+        return new PairFunction<Tuple2<String, Iterable<FlightDatum>>, String, Iterable<Flight>>() {
+            public Tuple2<String, Iterable<Flight>> call(Tuple2<String, Iterable<FlightDatum>> tuple) throws Exception {
+                String icao = tuple._1;
+                List<FlightDatum> flightDataList = Lists.newArrayList(tuple._2);
+                Collections.sort(flightDataList);
 
-            List<Flight> flights = new ArrayList<>();
+                List<Flight> flights = new ArrayList<>();
 
-            // First do a rough grouping merely on time
-            SortedSet<FlightDatum> lastFlightData = new TreeSet<>();
-            double lastTime = flightDataList.get(0).getTime();
-            for (FlightDatum fd : flightDataList) {
-                if (fd.getTime() - lastTime >= MAX_TIME_DELTA) {
+                // First do a rough grouping merely on time
+                SortedSet<FlightDatum> lastFlightData = new TreeSet<>();
+                double lastTime = flightDataList.get(0).getTime();
+                for (FlightDatum fd : flightDataList) {
+                    if (fd.getTime() - lastTime >= MAX_TIME_DELTA) {
+                        Flight flight = new Flight(icao, lastFlightData);
+                        lastFlightData = new TreeSet<>();
+                        flights.add(flight);
+                    }
+                    lastFlightData.add(fd);
+                    lastTime = fd.getTime();
+                }
+                if (!lastFlightData.isEmpty()) {
                     Flight flight = new Flight(icao, lastFlightData);
-                    lastFlightData = new TreeSet<>();
                     flights.add(flight);
                 }
-                lastFlightData.add(fd);
-                lastTime = fd.getTime();
+
+                return new Tuple2<String, Iterable<Flight>>(icao, flights);
             }
-            if (!lastFlightData.isEmpty()) {
-                Flight flight = new Flight(icao, lastFlightData);
-                flights.add(flight);
-            }
+        };
+    }
 
-            return new Tuple2<String, Iterable<Flight>>(icao, flights);
-        }
-    };
+    public static FlatMapFunction<Flight, Flight> splitflightsOnLandingAndLiftoff() {
+        return new FlatMapFunction<Flight, Flight>() {
+            public Iterable<Flight> call(Flight flight) throws Exception {
+                Iterable<Flight> flights = splitFlightOnAltitude(flight);
 
-    public static final FlatMapFunction<Flight, Flight> splitFlightsOnAltitudeOrDistance = new FlatMapFunction<Flight, Flight>() {
-        public Iterable<Flight> call(Flight flight) throws Exception {
-            Iterable<Flight> flights = splitFlightOnAltitude(flight);
-
-            if (flights == null) {
-                flights = splitFlightOnDistance(flight);
-            }
-
-            return flights;
-        }
-    };
-
-    public static final Function<Flight, Boolean> isLongFlight = new Function<Flight, Boolean>() {
-        public Boolean call(Flight flight) throws Exception {
-            return flight.getDuration() > MIN_DURATION;
-        }
-    };
-
-    public static final Function<Flight, Boolean> hasPositionData = new Function<Flight, Boolean>() {
-        public Boolean call(Flight flight) throws Exception {
-            for (FlightDatum fd : flight.getFlightData()) {
-                if (fd.hasPosition()) {
-                    return true;
+                if (flights == null) {
+                    flights = splitFlightOnDistance(flight);
                 }
+
+                return flights;
             }
-            return false;
-        }
-    };
+        };
+    }
+
+    public static Function<Flight, Boolean> noShortFlight() {
+        return new Function<Flight, Boolean>() {
+            public Boolean call(Flight flight) throws Exception {
+                return flight.getDuration() > MIN_DURATION;
+            }
+        };
+    }
+
+    public static Function<Flight, Boolean> hasPositionData() {
+        return new Function<Flight, Boolean>() {
+            public Boolean call(Flight flight) throws Exception {
+                for (FlightDatum fd : flight.getFlightData()) {
+                    if (fd.hasPosition()) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        };
+    }
 
     // PRIVATE METHODS
 

@@ -23,6 +23,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static vu.lsde.jobs.functions.SensorDataFunctions.usefulSensorData;
+import static vu.lsde.jobs.functions.SensorDataFunctions.validSensorData;
+
 /**
  * Takes a avro files containing sensor data as input, and then filters out any sensor data belonging to aircraft that
  * are definitely NOT rotorcraft. This is done by looking at speed and altitude. The remaining sensordata is then output
@@ -53,29 +56,11 @@ public class Sampler extends JobBase {
         long inputRecordsCount = sensorData.count();
 
         // Filter out invalid messages
-        sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
-            public Boolean call(SensorDatum sensorDatum) throws Exception {
-                return sensorDatum.isValidMessage();
-            }
-        });
+        sensorData = sensorData.filter(validSensorData());
         long validRecordsCount = sensorData.count();
 
         // Filter out messages we won't use anyway
-        sensorData = sensorData.filter(new Function<SensorDatum, Boolean>() {
-            public Boolean call(SensorDatum sensorDatum) throws Exception {
-                switch(sensorDatum.getDecodedMessage().getType()) {
-                    case MODES_REPLY:
-                    case SHORT_ACAS:
-                    case LONG_ACAS:
-                    case EXTENDED_SQUITTER:
-                    case COMM_D_ELM:
-                    case ADSB_EMERGENCY:
-                    case ADSB_TCAS:
-                        return false;
-                }
-                return true;
-            }
-        });
+        sensorData = sensorData.filter(usefulSensorData());
         long usefulRecordsCount = sensorData.count();
 
         JavaPairRDD<String, SensorDatum> pairs = sensorData.mapToPair(new PairFunction<SensorDatum, String, SensorDatum>() {

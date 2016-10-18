@@ -1,19 +1,58 @@
 package vu.lsde.core.model;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.SortedSet;
-import java.util.UUID;
+import javafx.geometry.Pos;
+import org.opensky.libadsb.Position;
+
+import java.util.*;
 
 public class Flight extends ModelBase {
-    private final String id;
-    private final String icao;
-    private final SortedSet<FlightDatum> flightData;
+    private String id;
+    private String icao;
+    private SortedSet<FlightDatum> flightData;
+    private double startLatitude;
+    private double startLongitude;
+    private double startAltitude;
+    private double endLatitude;
+    private double endLongitude;
+    private double endAltitude;
 
     public Flight(String icao, SortedSet<FlightDatum> flightData) {
         this.id = UUID.randomUUID().toString();
         this.icao = icao;
         this.flightData = flightData;
+
+        init();
+    }
+
+    private void init() {
+        Position startPosition = null;
+        Double startAltitude = null;
+        Position endPosition = null;
+        Double endAltitude = null;
+        for (FlightDatum fd : flightData) {
+            if (fd.hasPosition()) {
+                Position position = fd.getPosition();
+                if (startPosition == null) {
+                    startPosition = position;
+                }
+                endPosition = position;
+            }
+            if (fd.hasAltitude()) {
+                double altitude = fd.getAltitude();
+                if (startAltitude == null) {
+                    startAltitude = altitude;
+                }
+                endAltitude = altitude;
+            }
+        }
+        if (startPosition != null) {
+            this.startLatitude = startPosition.getLatitude();
+            this.startLongitude = startPosition.getLongitude();
+            this.endLatitude = endPosition.getLatitude();
+            this.endLongitude = endPosition.getLongitude();
+        }
+        this.startAltitude = nullToNullDouble(startAltitude);
+        this.endLatitude = nullToNullDouble(endAltitude);
     }
 
     public String getID() {
@@ -26,7 +65,7 @@ public class Flight extends ModelBase {
     }
 
     public SortedSet<FlightDatum> getFlightData() {
-        return this.flightData;
+        return Collections.unmodifiableSortedSet(this.flightData);
     }
 
     public double getStartTime() {
@@ -35,6 +74,14 @@ public class Flight extends ModelBase {
 
     public double getEndTime() {
         return flightData.last().getTime();
+    }
+
+    public Position getStartPosition() {
+        return new Position(startLongitude, startLatitude, nullDoubleToNull(startAltitude));
+    }
+
+    public Position getEndPosition() {
+        return new Position(endLongitude, endLatitude, nullDoubleToNull(endAltitude));
     }
 
     public double getDuration() {

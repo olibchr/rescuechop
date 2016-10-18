@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
 
+import static vu.lsde.jobs.functions.FlightDataFunctions.mergeFlightData;
+
 public class MergeFlightData extends JobBase {
 
     public static void main(String[] args) {
@@ -28,23 +30,10 @@ public class MergeFlightData extends JobBase {
         long recordsCount = flightData.count();
 
         // Group by aircraft
-        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = flightData.groupBy(new Function<FlightDatum, String>() {
-            public String call(FlightDatum flightDatum) throws Exception {
-                return flightDatum.getIcao();
-            }
-        });
+        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = groupByIcao(flightData);
 
         // Merge flight data that are from the same timestamp
-        JavaPairRDD<String, Iterable<FlightDatum>> mergedFlightDataByAircraft = flightDataByAircraft.mapToPair(new PairFunction<Tuple2<String, Iterable<FlightDatum>>, String, Iterable<FlightDatum>>() {
-            public Tuple2<String, Iterable<FlightDatum>> call(Tuple2<String, Iterable<FlightDatum>> tuple) throws Exception {
-                String icao = tuple._1;
-                Iterable<FlightDatum> flightData = tuple._2;
-
-                List<FlightDatum> mergedFlightData = mergeFlightData(flightData);
-
-                return new Tuple2<String, Iterable<FlightDatum>>(icao, mergedFlightData);
-            }
-        });
+        JavaPairRDD<String, Iterable<FlightDatum>> mergedFlightDataByAircraft = flightDataByAircraft.mapToPair(mergeFlightData());
 
         // Flatten
         flightData = flatten(mergedFlightDataByAircraft).cache();
@@ -84,19 +73,5 @@ public class MergeFlightData extends JobBase {
         statistics.add(numberOfItemsStatistic("velocity data     ", velocityDataCount, flightDataCount));
         statistics.add(numberOfItemsStatistic("rate of climb data", rocDataCount, flightDataCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
-    }
-
-    protected static List<FlightDatum> mergeFlightData(Iterable<FlightDatum> flightData) {
-        List<FlightDatum> result = new ArrayList<>();
-
-        // Group by 5s
-        SortedMap<Long, List<FlightDatum>> flightDatumPer5Seconds = Grouping.groupFlightDataByTimeWindow(flightData, 5);
-
-        // Map to merged flight data
-        for (long timeWindow : flightDatumPer5Seconds.keySet()) {
-            result.add(FlightDatum.merge(flightDatumPer5Seconds.get(timeWindow)));
-        }
-
-        return result;
     }
 }

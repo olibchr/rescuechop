@@ -2,15 +2,26 @@ package vu.lsde.jobs;
 
 import org.apache.spark.Accumulator;
 import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.api.java.function.VoidFunction;
-import org.opensky.libadsb.msgs.*;
+import org.opensky.libadsb.Position;
+import org.opensky.libadsb.msgs.AirbornePositionMsg;
+import org.opensky.libadsb.msgs.ModeSReply;
+import org.opensky.libadsb.msgs.SurfacePositionMsg;
+import scala.Tuple2;
+import vu.lsde.core.model.FlightDatum;
 import vu.lsde.core.model.SensorDatum;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
+import static vu.lsde.jobs.functions.FlightDataFunctions.sensorDataByAircraftToFlightDataByAircraft;
 
 /**
  * Reads sensor data in CSV format and analyzes the kind of messages that are in there.
@@ -25,97 +36,113 @@ public class MessageTypeAnalyzer extends JobBase {
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
         // Load sensor data
-        JavaRDD<SensorDatum> sensorData = readSensorDataCsv(sc, inputPath);
+        JavaRDD<SensorDatum> sensorData = readSensorDataAvro(sc, inputPath);
         long recordsCount = sensorData.count();
 
         // Accumulators for counting
-        final Accumulator<Integer> airPosMsgAcc = sc.accumulator(0);
-        final Accumulator<Integer> airSpeedHeadingMsgAcc = sc.accumulator(0);
-        final Accumulator<Integer> altReplyMsgAcc = sc.accumulator(0);
-        final Accumulator<Integer> commBAltReplyAcc = sc.accumulator(0);
-        final Accumulator<Integer> commBIdentifyReplyAcc = sc.accumulator(0);
-        final Accumulator<Integer> commDExtLengthMsgAcc = sc.accumulator(0);
-        final Accumulator<Integer> emergOrPrioStatusMsgAcc = sc.accumulator(0);
-        final Accumulator<Integer> idMsgAcc = sc.accumulator(0);
-        final Accumulator<Integer> idReplyAcc = sc.accumulator(0);
-        final Accumulator<Integer> longAcasAcc = sc.accumulator(0);
-        final Accumulator<Integer> militaryExtSquitterAcc = sc.accumulator(0);
-        final Accumulator<Integer> opStatusMsgAcc = sc.accumulator(0);
-        final Accumulator<Integer> shortAcasAcc = sc.accumulator(0);
-        final Accumulator<Integer> surfPosMsgAcc = sc.accumulator(0);
-        final Accumulator<Integer> tcasResolAdvMsg = sc.accumulator(0);
-        final Accumulator<Integer> veloOverGrndMsg = sc.accumulator(0);
-        final Accumulator<Integer> otherAcc = sc.accumulator(0);
+        final Map<ModeSReply.subtype, Accumulator<Integer>> accumulatorsByType = accumulatorsByMessageType(sc);
         final Accumulator<Integer> invalidAcc = sc.accumulator(0);
-        final Accumulator<Integer> extSquitterAcc = sc.accumulator(0);
 
         // Count message types
         sensorData.foreach(new VoidFunction<SensorDatum>() {
             public void call(SensorDatum sd) {
                 ModeSReply msg = sd.getDecodedMessage();
-                if (!sd.isValidMessage())
+                if (!sd.isValidMessage()) {
                     invalidAcc.add(1);
-                else if (msg instanceof AirbornePositionMsg)
-                    airPosMsgAcc.add(1);
-                else if (msg instanceof AltitudeReply)
-                    altReplyMsgAcc.add(1);
-                else if (msg instanceof AirspeedHeadingMsg)
-                    airSpeedHeadingMsgAcc.add(1);
-                else if (msg instanceof CommBAltitudeReply)
-                    commBAltReplyAcc.add(1);
-                else if (msg instanceof CommBIdentifyReply)
-                    commBIdentifyReplyAcc.add(1);
-                else if (msg instanceof CommDExtendedLengthMsg)
-                    commDExtLengthMsgAcc.add(1);
-                else if (msg instanceof EmergencyOrPriorityStatusMsg)
-                    emergOrPrioStatusMsgAcc.add(1);
-                else if (msg instanceof IdentificationMsg)
-                    idMsgAcc.add(1);
-                else if (msg instanceof IdentifyReply)
-                    idReplyAcc.add(1);
-                else if (msg instanceof LongACAS)
-                    longAcasAcc.add(1);
-                else if (msg instanceof MilitaryExtendedSquitter)
-                    militaryExtSquitterAcc.add(1);
-                else if (msg instanceof OperationalStatusMsg)
-                    opStatusMsgAcc.add(1);
-                else if (msg instanceof ShortACAS)
-                    shortAcasAcc.add(1);
-                else if (msg instanceof SurfacePositionMsg)
-                    surfPosMsgAcc.add(1);
-                else if (msg instanceof TCASResolutionAdvisoryMsg)
-                    tcasResolAdvMsg.add(1);
-                else if (msg instanceof VelocityOverGroundMsg)
-                    veloOverGrndMsg.add(1);
-                else if (msg instanceof ExtendedSquitter)
-                    extSquitterAcc.add(1);
-                else
-                    otherAcc.add(1);
+                } else {
+                    accumulatorsByType.get(msg.getType()).add(1);
+                }
             }
         });
 
+        // Count messages by day
+        JavaPairRDD<String, Long> daysCount = sensorData
+                .mapToPair(toDayCountTuple())
+                .reduceByKey(add())
+                .sortByKey()
+                .mapToPair(formatUnixTime());
+
+        // Filter out irrelevant messages
+        sensorData = sensorData.filter(positionSensorData());
+
+        // Map to positions
+        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = groupByIcao(sensorData).mapToPair(sensorDataByAircraftToFlightDataByAircraft());
+        JavaRDD<String> positionStrings = flatten(flightDataByAircraft).map(flightDataToPositionStrings());
+
+        // Save positions
+        positionStrings.saveAsTextFile(outputPath + "_positions");
+
         // Print statistics
-        List<String> statistics = new ArrayList<String>();
-        statistics.add(numberOfItemsStatistic("input records               ", recordsCount));
-        statistics.add(numberOfItemsStatistic("AirbornePositionMsg         ", airPosMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("AltitudeReply               ", altReplyMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("AirspeedHeadingMsg          ", airSpeedHeadingMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("CommBAltitudeReply          ", commBAltReplyAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("CommBIdentifyReply          ", commBIdentifyReplyAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("CommDExtendedLengthMsg      ", commDExtLengthMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("EmergencyOrPriorityStatusMsg", emergOrPrioStatusMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("IdentificationMsg           ", idMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("IdentifyReply               ", idReplyAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("LongACAS                    ", longAcasAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("MilitaryExtendedSquitter    ", militaryExtSquitterAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("OperationalStatusMsg        ", opStatusMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("ShortACAS                   ", shortAcasAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("SurfacePositionMsg          ", surfPosMsgAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("TCASResolutionAdvisoryMsg   ", tcasResolAdvMsg.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("VelocityOverGroundMsg       ", veloOverGrndMsg.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("Unknown ExtendedSquitter    ", extSquitterAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("other                       ", otherAcc.value(), recordsCount));
-        statistics.add(numberOfItemsStatistic("invalid                     ", invalidAcc.value(), recordsCount));
+        List<String> statistics = new ArrayList<>();
+        statistics.add(numberOfItemsStatistic("input records", recordsCount));
+        for (ModeSReply.subtype subtype : accumulatorsByType.keySet()) {
+            int count = accumulatorsByType.get(subtype).value();
+            statistics.add(numberOfItemsStatistic(subtype.name(), count, recordsCount));
+        }
+        for (Tuple2<String, Long> t : daysCount.collect()) {
+            statistics.add(numberOfItemsStatistic("data on " + t._1, t._2));
+        }
+        statistics.add(numberOfItemsStatistic("invalid", invalidAcc.value(), recordsCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
+    }
+
+    private static Map<ModeSReply.subtype, Accumulator<Integer>> accumulatorsByMessageType(JavaSparkContext sc) {
+        Map<ModeSReply.subtype, Accumulator<Integer>> accumulatorsByMessageType = new TreeMap<>();
+        for (ModeSReply.subtype subtype : ModeSReply.subtype.values()) {
+            accumulatorsByMessageType.put(subtype, sc.accumulator(0));
+        }
+        return accumulatorsByMessageType;
+    }
+
+    // FUNCTIONS
+
+    private static Function<SensorDatum, Boolean> positionSensorData() {
+        return new Function<SensorDatum, Boolean>() {
+            @Override
+            public Boolean call(SensorDatum sensorDatum) throws Exception {
+                ModeSReply msg = sensorDatum.getDecodedMessage();
+                return msg instanceof AirbornePositionMsg || msg instanceof SurfacePositionMsg;
+            }
+        };
+    }
+
+    private static PairFunction<SensorDatum, Long, Long> toDayCountTuple() {
+        return new PairFunction<SensorDatum, Long, Long>() {
+            @Override
+            public Tuple2<Long, Long> call(SensorDatum sensorDatum) throws Exception {
+                return new Tuple2<>(Math.round(sensorDatum.getTimeAtServer()) / 86400, 1L);
+            }
+        };
+    }
+
+    private static Function2<Long, Long, Long> add() {
+        return new Function2<Long, Long, Long>() {
+            @Override
+            public Long call(Long a, Long b) throws Exception {
+                return a + b;
+            }
+        };
+    }
+
+    private static Function<FlightDatum, String> flightDataToPositionStrings() {
+        return new Function<FlightDatum, String>() {
+            @Override
+            public String call(FlightDatum flightDatum) throws Exception {
+                Position position = flightDatum.getPosition();
+                return position.getLatitude() + "," + position.getLongitude();
+            }
+        };
+    }
+
+    private static PairFunction<Tuple2<Long, Long>, String, Long> formatUnixTime() {
+        return new PairFunction<Tuple2<Long, Long>, String, Long>() {
+            @Override
+            public Tuple2<String, Long> call(Tuple2<Long, Long> t) throws Exception {
+                Date date = new Date();
+                date.setTime(t._1);
+                String prettyTime = new SimpleDateFormat("YYYY-MM-dd").format(date);
+                return new Tuple2<>(prettyTime, t._2);
+            }
+        };
     }
 }

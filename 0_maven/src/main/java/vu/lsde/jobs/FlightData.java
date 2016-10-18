@@ -1,27 +1,16 @@
 package vu.lsde.jobs;
 
-import com.clearspring.analytics.util.Lists;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.PairFunction;
-import org.opensky.libadsb.Position;
-import org.opensky.libadsb.PositionDecoder;
-import org.opensky.libadsb.msgs.*;
-import scala.Tuple2;
 import vu.lsde.core.model.FlightDatum;
 import vu.lsde.core.model.SensorDatum;
 import vu.lsde.jobs.functions.FlightDataFunctions;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -41,14 +30,14 @@ public class FlightData extends JobBase {
         long recordsCount = sensorData.count();
 
         // Filter position and velocity messages
-        sensorData = sensorData.filter(FlightDataFunctions.filterFlightDataMsgs);
+        sensorData = sensorData.filter(FlightDataFunctions.onlyFlightDataMsgs());
         long filteredRecordsCount = sensorData.count();
 
         // Group models by icao
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = groupByIcao(sensorData);
 
         // Map messages to flight data
-        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = sensorDataByAircraft.mapToPair(FlightDataFunctions.sensorDataToFlightData);
+        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = sensorDataByAircraft.mapToPair(FlightDataFunctions.sensorDataByAircraftToFlightDataByAircraft());
 
         // Flatten
         JavaRDD<FlightDatum> flightData = flatten(flightDataByAircraft).cache();
