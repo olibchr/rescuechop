@@ -13,6 +13,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static vu.lsde.jobs.functions.FlightDataFunctions.sensorDataByAircraftToFlightDataByAircraft;
+import static vu.lsde.jobs.functions.SensorDataFunctions.flightDataSensorData;
+
 /**
  * Maps sensor data to aircraft positions.
  */
@@ -30,14 +33,14 @@ public class FlightData extends JobBase {
         long recordsCount = sensorData.count();
 
         // Filter position and velocity messages
-        sensorData = sensorData.filter(FlightDataFunctions.onlyFlightDataMsgs());
+        sensorData = sensorData.filter(flightDataSensorData());
         long filteredRecordsCount = sensorData.count();
 
         // Group models by icao
         JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByAircraft = groupByIcao(sensorData);
 
         // Map messages to flight data
-        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = sensorDataByAircraft.mapToPair(FlightDataFunctions.sensorDataByAircraftToFlightDataByAircraft());
+        JavaPairRDD<String, Iterable<FlightDatum>> flightDataByAircraft = sensorDataByAircraft.mapToPair(sensorDataByAircraftToFlightDataByAircraft());
 
         // Flatten
         JavaRDD<FlightDatum> flightData = flatten(flightDataByAircraft).cache();

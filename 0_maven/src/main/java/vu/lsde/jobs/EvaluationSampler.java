@@ -14,10 +14,10 @@ import vu.lsde.core.model.SensorDatum;
 
 import java.io.IOException;
 
-import static vu.lsde.jobs.functions.FlightDataFunctions.onlyFlightDataMsgs;
 import static vu.lsde.jobs.functions.FlightDataFunctions.sensorDataByAircraftToFlightDataByAircraft;
 import static vu.lsde.jobs.functions.FlightFunctions.*;
 import static vu.lsde.jobs.functions.FlightFunctions.splitflightsOnLandingAndLiftoff;
+import static vu.lsde.jobs.functions.SensorDataFunctions.flightDataSensorData;
 import static vu.lsde.jobs.functions.SensorDataFunctions.usefulSensorData;
 import static vu.lsde.jobs.functions.SensorDataFunctions.validSensorData;
 
@@ -83,8 +83,8 @@ public class EvaluationSampler extends JobBase {
         JavaRDD<SensorDatum> planeSensorData = flatten(sensorDataByAirplanes);
 
         // Filter out irrelevant messages
-        heliSensorData = heliSensorData.filter(onlyFlightDataMsgs());
-        planeSensorData = planeSensorData.filter(onlyFlightDataMsgs());
+        heliSensorData = heliSensorData.filter(flightDataSensorData());
+        planeSensorData = planeSensorData.filter(flightDataSensorData());
 
         // Group by icao
         JavaPairRDD<String, Iterable<SensorDatum>> heliSensorDataByHeli = groupByIcao(heliSensorData);

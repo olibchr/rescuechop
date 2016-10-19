@@ -1,18 +1,13 @@
 package vu.lsde.jobs;
 
 import org.apache.avro.generic.GenericRecord;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
-import org.apache.spark.storage.StorageLevel;
 import org.opensky.libadsb.msgs.*;
 import scala.Tuple2;
 import vu.lsde.core.Config;
@@ -32,6 +27,9 @@ import static vu.lsde.jobs.functions.SensorDataFunctions.validSensorData;
  * in the form of CSV.
  */
 public class Sampler extends JobBase {
+
+    private static final double MAX_ALTITUDE = 3500;
+    private static final double MAX_VELOCITY = 100;
 
     public static void main(String[] args) throws IOException {
         String inputPath = args[0];
@@ -78,27 +76,27 @@ public class Sampler extends JobBase {
                 ModeSReply decodedMessage = sensorDatum.getDecodedMessage();
                 if (decodedMessage instanceof AltitudeReply) {
                     AltitudeReply msg = (AltitudeReply) decodedMessage;
-                    if (msg.getAltitude() != null && msg.getAltitude() > 3000) {
+                    if (msg.getAltitude() != null && msg.getAltitude() > MAX_ALTITUDE) {
                         sensorData = null;
                     }
                 } else if (decodedMessage instanceof CommBAltitudeReply) {
                     CommBAltitudeReply msg = (CommBAltitudeReply) decodedMessage;
-                    if (msg.getAltitude() != null && msg.getAltitude() > 3000) {
+                    if (msg.getAltitude() != null && msg.getAltitude() > MAX_ALTITUDE) {
                         sensorData = null;
                     }
                 } else if (decodedMessage instanceof AirbornePositionMsg) {
                     AirbornePositionMsg msg = (AirbornePositionMsg) decodedMessage;
-                    if (msg.hasAltitude() && msg.getAltitude() > 3000) {
+                    if (msg.hasAltitude() && msg.getAltitude() > MAX_ALTITUDE) {
                         sensorData = null;
                     }
                 } else if (decodedMessage instanceof AirspeedHeadingMsg) {
                     AirspeedHeadingMsg msg = (AirspeedHeadingMsg) decodedMessage;
-                    if (msg.hasAirspeedInfo() && msg.getAirspeed() > 120) {
+                    if (msg.hasAirspeedInfo() && msg.getAirspeed() > MAX_VELOCITY) {
                         sensorData = null;
                     }
                 } else if (decodedMessage instanceof VelocityOverGroundMsg) {
                     VelocityOverGroundMsg msg = (VelocityOverGroundMsg) decodedMessage;
-                    if (msg.hasVelocityInfo() && msg.getVelocity() > 120) {
+                    if (msg.hasVelocityInfo() && msg.getVelocity() > MAX_VELOCITY) {
                         sensorData = null;
                     }
                 } else if (decodedMessage instanceof IdentificationMsg) {

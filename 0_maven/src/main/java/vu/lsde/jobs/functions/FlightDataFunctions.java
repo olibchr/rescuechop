@@ -18,15 +18,30 @@ import java.util.List;
 import java.util.SortedMap;
 
 public class FlightDataFunctions {
-    public static Function<SensorDatum, Boolean> onlyFlightDataMsgs() {
-        return new Function<SensorDatum, Boolean>() {
-            public Boolean call(SensorDatum sd) {
-                return sd.getDecodedMessage() instanceof AirbornePositionMsg
-                        || sd.getDecodedMessage() instanceof SurfacePositionMsg
-                        || sd.getDecodedMessage() instanceof AirspeedHeadingMsg
-                        || sd.getDecodedMessage() instanceof VelocityOverGroundMsg
-                        || sd.getDecodedMessage() instanceof AltitudeReply
-                        || sd.getDecodedMessage() instanceof CommBAltitudeReply;
+
+    public static Function<FlightDatum, Boolean> positionFlightData() {
+        return new Function<FlightDatum, Boolean>() {
+            @Override
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.hasPosition();
+            }
+        };
+    }
+
+    public static Function<FlightDatum, Boolean> altitudeFlightData() {
+        return new Function<FlightDatum, Boolean>() {
+            @Override
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.hasAltitude();
+            }
+        };
+    }
+
+    public static Function<FlightDatum, Boolean> velocityFlightData() {
+        return new Function<FlightDatum, Boolean>() {
+            @Override
+            public Boolean call(FlightDatum flightDatum) throws Exception {
+                return flightDatum.hasVelocity();
             }
         };
     }

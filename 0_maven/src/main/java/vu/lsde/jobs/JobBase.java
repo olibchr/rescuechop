@@ -193,4 +193,22 @@ public abstract class JobBase {
             }
         };
     }
+
+    protected static FlatMapFunction<Iterable<SensorDatum>, SensorDatum> flattenSensorData() {
+        return new FlatMapFunction<Iterable<SensorDatum>, SensorDatum>() {
+            @Override
+            public Iterable<SensorDatum> call(Iterable<SensorDatum> sensorData) throws Exception {
+                return sensorData;
+            }
+        };
+    }
+
+    protected static <M extends ModelBase> FlatMapFunction<Iterable<M>, M> flatten() {
+        return new FlatMapFunction<Iterable<M>, M>() {
+            @Override
+            public Iterable<M> call(Iterable<M> ms) throws Exception {
+                return ms;
+            }
+        };
+    }
 }

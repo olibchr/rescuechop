@@ -14,14 +14,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static vu.lsde.jobs.JobBase.flatten;
 import static vu.lsde.jobs.functions.ClassifierFunctions.classifyHelicoperFlights;
 import static vu.lsde.jobs.functions.FlightDataFunctions.mergeFlightData;
-import static vu.lsde.jobs.functions.FlightDataFunctions.onlyFlightDataMsgs;
 import static vu.lsde.jobs.functions.FlightDataFunctions.sensorDataByAircraftToFlightDataByAircraft;
-import static vu.lsde.jobs.functions.FlightFunctions.noShortFlight;
-import static vu.lsde.jobs.functions.FlightFunctions.splitFlightDataOnTime;
-import static vu.lsde.jobs.functions.FlightFunctions.splitflightsOnLandingAndLiftoff;
+import static vu.lsde.jobs.functions.FlightFunctions.*;
+import static vu.lsde.jobs.functions.SensorDataFunctions.flightDataSensorData;
 import static vu.lsde.jobs.functions.SensorDataFunctions.rotorcraftSensorData;
 
 /**
@@ -60,7 +57,7 @@ public class HelicopterIdentifier extends JobBase {
 
         // Find rough flights for unknown aircraft
         JavaPairRDD<String, Iterable<Flight>> otherFlightsByAircraft = sensorData
-                .filter(onlyFlightDataMsgs())
+                .filter(flightDataSensorData())
                 .groupBy(JobBase.<SensorDatum>modelGetIcao())
                 .subtractByKey(rotorcraftFlightsByRotorcraft)
                 .mapToPair(sensorDataByAircraftToFlightDataByAircraft())
