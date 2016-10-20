@@ -1,11 +1,12 @@
 package vu.lsde.core.model;
 
+import org.opensky.libadsb.Position;
 import vu.lsde.core.reducer.Point;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class PlotDatum extends ModelBase implements Point {
+public class PlotDatum extends ModelBase implements Point, Comparable<PlotDatum> {
     private String icao;
     private String flightID;
     private double time;
@@ -45,6 +46,10 @@ public class PlotDatum extends ModelBase implements Point {
         return longitude;
     }
 
+    public Position getPosition() {
+        return new Position(getLongitude(), getLatitude(), getAltitude());
+    }
+
     public Double getAltitude() {
         return nullDoubleToNull(altitude);
     }
@@ -74,5 +79,18 @@ public class PlotDatum extends ModelBase implements Point {
             }
         }
         return result;
+    }
+
+    @Override
+    public int compareTo(PlotDatum other) {
+        int result = this.icao.compareTo(other.icao);
+        if (result != 0)
+            return result;
+        // Same plane, compare flight
+        result = this.flightID.compareTo(other.flightID);
+        if (result != 0)
+            return result;
+        // Same flight, compare time
+        return Double.compare(this.time, other.time);
     }
 }

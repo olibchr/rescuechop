@@ -8,19 +8,9 @@ import vu.lsde.core.io.CsvReader;
 
 import java.util.List;
 
-public class HelipadPositionsService {
+public class HelipadPositionsService extends PositionService {
 
     public static List<Position> getHelipadPositions(JavaSparkContext sc) {
-        JavaRDD<String> lines = sc.textFile("europe_helipads.csv");
-        JavaRDD<Position> positions = lines.map(new Function<String, Position>() {
-            @Override
-            public Position call(String s) throws Exception {
-                List<String> tokens = CsvReader.getTokens(s);
-                double lat = Double.parseDouble(tokens.get(0));
-                double lon = Double.parseDouble(tokens.get(1));
-                return new Position(lon, lat, 0.0);
-            }
-        });
-        return positions.collect();
+        return getPositionsFromHdfs(sc, "europe_helipads.csv");
     }
 }

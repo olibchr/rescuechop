@@ -1,5 +1,6 @@
 package vu.lsde.jobs;
 
+import org.apache.hadoop.io.NullWritable;
 import org.apache.spark.Accumulator;
 import org.apache.spark.AccumulatorParam;
 import org.apache.spark.SparkConf;
@@ -21,9 +22,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 import static vu.lsde.jobs.functions.FlightDataFunctions.*;
-import static vu.lsde.jobs.functions.SensorDataFunctions.rotorcraftSensorData;
-import static vu.lsde.jobs.functions.SensorDataFunctions.usefulSensorData;
-import static vu.lsde.jobs.functions.SensorDataFunctions.validSensorData;
+import static vu.lsde.jobs.functions.SensorDataFunctions.*;
 
 /**
  * Reads sensor data in avro format and analyzes the kind of messages that are in there.
@@ -76,15 +75,32 @@ public class Analyzer extends JobBase {
         //  ROTORCRAFTS
         //
 
-        // Get sensor data for rotorcrafts
-        JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByRotorcraft = sensorData
+        // Get rotorcraft icaos
+        JavaPairRDD<String, String> rotorcraftIcaos = sensorData
                 .filter(validSensorData())
-                .groupBy(JobBase.<SensorDatum>modelGetIcao())
-                .filter(rotorcraftSensorData());
+                .filter(identificationSensorData())
+                .filter(rotorcraftSensorData())
+                .map(JobBase.<SensorDatum>modelGetIcao())
+                .distinct()
+                .mapToPair(icaoToIcaoIcaoPair());
+
+        JavaPairRDD<String, SensorDatum> icaoSensorDataPairs = toIcaoModelPairs(sensorData.filter(validSensorData()));
+
+        // Get sensor data for rotorcrafts
+        JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByRotorcraft = rotorcraftIcaos
+                .join(icaoSensorDataPairs)
+                .values()
+                .mapToPair(new PairFunction<Tuple2<String, SensorDatum>, String, SensorDatum>() {
+                    @Override
+                    public Tuple2<String, SensorDatum> call(Tuple2<String, SensorDatum> t) throws Exception {
+                        return t;
+                    }
+                })
+                .groupByKey();
 
         // Get flight data for rotorcrafts
         JavaPairRDD<String, Iterable<FlightDatum>> flightDataByRotorcraft = sensorDataByRotorcraft
-                .mapToPair(sensorDataByAircraftToFlightDataByAircraft());
+                .mapToPair(sensorDataByAircraftToFlightDataByAircraft()).cache();
 
         // Find maximum speed and altitude for each helicopter
         JavaRDD<Tuple2<Double, Double>> rotorcraftMaxAltitudesVelocities = flightDataByRotorcraft
@@ -104,6 +120,7 @@ public class Analyzer extends JobBase {
                 .filter(velocityFlightData())
                 .map(flightDataGetVelocity());
 
+
         //
         //  ALL AIRCRAFT
         //
@@ -111,8 +128,9 @@ public class Analyzer extends JobBase {
         // Count all aircraft
         long aircraftCount = sensorData.map(JobBase.<SensorDatum>modelGetIcao()).distinct().count();
 
-        // Get flight data for all aircraft
+        // Sample flight data for all aircraft
         JavaRDD<FlightDatum> flightData = sensorData
+                .sample(true, 0.001)
                 .filter(validSensorData())
                 .filter(usefulSensorData())
                 .groupBy(JobBase.<SensorDatum>modelGetIcao())
@@ -120,7 +138,7 @@ public class Analyzer extends JobBase {
                 .values()
                 .flatMap(JobBase.<FlightDatum>flatten());
 
-        // Find all altitudes
+        // Find altitudes
         JavaRDD<Double> altitudes = flightData
                 .filter(altitudeFlightData())
                 .map(flightDataGetAltitude());
@@ -141,7 +159,7 @@ public class Analyzer extends JobBase {
         positionStrings.saveAsTextFile(outputPath + "_positions");
         rotorcraftAltitudes.saveAsTextFile(outputPath + "_rc_altitudes");
         rotorcraftVelocities.saveAsTextFile(outputPath + "_rc_velocities");
-        rotorcraftMaxAltitudesVelocities.map(doubleTupleToCsv()).saveAsTextFile("_rc_max_altitudes_velocities");
+        rotorcraftMaxAltitudesVelocities.map(doubleTupleToCsv()).saveAsTextFile(outputPath + "_rc_max_altitudes_velocities");
 
         // Print statistics
         List<String> statistics = new ArrayList<>();
@@ -262,24 +280,20 @@ public class Analyzer extends JobBase {
         };
     }
 
-    private static Tuple2<Double, Double> zeroTuple() {
-        return new Tuple2<>(0d, 0d);
-    }
-
-    private static Function2<Tuple2<Double, Double>, Tuple2<Double, Double>, Tuple2<Double, Double>> maxAltitudeVelocityTuple() {
-        return new Function2<Tuple2<Double, Double>, Tuple2<Double, Double>, Tuple2<Double, Double>>() {
-            @Override
-            public Tuple2<Double, Double> call(Tuple2<Double, Double> t1, Tuple2<Double, Double> t2) throws Exception {
-                return new Tuple2<>(Math.max(t1._1, t2._1), Math.max(t1._2, t2._2));
-            }
-        };
-    }
-
     private static Function<Tuple2<Double, Double>, String> doubleTupleToCsv() {
         return new Function<Tuple2<Double, Double>, String>() {
             @Override
             public String call(Tuple2<Double, Double> t) throws Exception {
                 return t._1.toString() + "," + t._2.toString();
+            }
+        };
+    }
+
+    private static PairFunction<String, String, String> icaoToIcaoIcaoPair() {
+        return new PairFunction<String, String, String>() {
+            @Override
+            public Tuple2<String, String> call(String s) throws Exception {
+                return new Tuple2<>(s, s);
             }
         };
     }

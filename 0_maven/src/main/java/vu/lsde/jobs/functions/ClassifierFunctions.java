@@ -50,4 +50,18 @@ public class ClassifierFunctions {
             }
         };
     }
+
+    public static Function<Tuple2<String, Iterable<Flight>>, Boolean> classifyResuceChopperFlights(final Broadcast<List<Position>> hospitals) {
+        return new Function<Tuple2<String, Iterable<Flight>>, Boolean>() {
+            @Override
+            public Boolean call(Tuple2<String, Iterable<Flight>> t) throws Exception {
+                for (Flight flight : t._2) {
+                    if (FlightAnalyzer.landsOrAscendsFromPosition(flight, hospitals.getValue())) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        };
+    }
 }

@@ -34,21 +34,23 @@ public class FlightFunctions {
 
                 List<Flight> flights = new ArrayList<>();
 
-                // First do a rough grouping merely on time
-                SortedSet<FlightDatum> lastFlightData = new TreeSet<>();
-                double lastTime = flightDataList.get(0).getTime();
-                for (FlightDatum fd : flightDataList) {
-                    if (fd.getTime() - lastTime >= MAX_TIME_DELTA) {
+                if (!flightDataList.isEmpty()) {
+                    // First do a rough grouping merely on time
+                    SortedSet<FlightDatum> lastFlightData = new TreeSet<>();
+                    double lastTime = flightDataList.get(0).getTime();
+                    for (FlightDatum fd : flightDataList) {
+                        if (fd.getTime() - lastTime >= MAX_TIME_DELTA) {
+                            Flight flight = new Flight(icao, lastFlightData);
+                            lastFlightData = new TreeSet<>();
+                            flights.add(flight);
+                        }
+                        lastFlightData.add(fd);
+                        lastTime = fd.getTime();
+                    }
+                    if (!lastFlightData.isEmpty()) {
                         Flight flight = new Flight(icao, lastFlightData);
-                        lastFlightData = new TreeSet<>();
                         flights.add(flight);
                     }
-                    lastFlightData.add(fd);
-                    lastTime = fd.getTime();
-                }
-                if (!lastFlightData.isEmpty()) {
-                    Flight flight = new Flight(icao, lastFlightData);
-                    flights.add(flight);
                 }
 
                 return new Tuple2<String, Iterable<Flight>>(icao, flights);
@@ -87,6 +89,29 @@ public class FlightFunctions {
                     }
                 }
                 return false;
+            }
+        };
+    }
+
+    public static Function<Flight, Boolean> hasAltitudeData() {
+        return new Function<Flight, Boolean>() {
+            @Override
+            public Boolean call(Flight flight) throws Exception {
+                for (FlightDatum fd : flight.getFlightData()) {
+                    if (fd.hasAltitude()) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        };
+    }
+
+    public static Function<Tuple2<String, Iterable<Flight>>, Boolean> hasFlights() {
+        return new Function<Tuple2<String, Iterable<Flight>>, Boolean>() {
+            @Override
+            public Boolean call(Tuple2<String, Iterable<Flight>> t) throws Exception {
+                return t._2.iterator().hasNext();
             }
         };
     }

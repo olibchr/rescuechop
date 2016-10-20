@@ -46,6 +46,15 @@ public class FlightDataFunctions {
         };
     }
 
+    public static Function<Tuple2<String, Iterable<FlightDatum>>, Boolean> hasFlightData() {
+        return new Function<Tuple2<String, Iterable<FlightDatum>>, Boolean>() {
+            @Override
+            public Boolean call(Tuple2<String, Iterable<FlightDatum>> t) throws Exception {
+                return t._2.iterator().hasNext();
+            }
+        };
+    }
+
     public static PairFunction<Tuple2<String, Iterable<SensorDatum>>, String, Iterable<FlightDatum>> sensorDataByAircraftToFlightDataByAircraft() {
         return new PairFunction<Tuple2<String, Iterable<SensorDatum>>, String, Iterable<FlightDatum>>() {
             public Tuple2<String, Iterable<FlightDatum>> call(Tuple2<String, Iterable<SensorDatum>> tuple) {

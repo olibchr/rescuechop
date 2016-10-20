@@ -38,35 +38,25 @@ public class Sampler extends JobBase {
         SparkConf sparkConf = new SparkConf().setAppName("LSDE09 Sampler")
                 .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                 .registerKryoClasses(new Class[]{SensorDatum.class});
-//                .set("spark.core.connection.ack.wait.timeout", "600s");
-
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
-        // Load records
-        JavaRDD<GenericRecord> records = SparkAvroReader.loadJavaRDD(sc, inputPath, Config.OPEN_SKY_SCHEMA);
+        // Get sensor data
+        JavaRDD<SensorDatum> sensorData = readSensorDataAvro(sc, inputPath)
+                .filter(validSensorData())
+                .filter(usefulSensorData());
 
-        // Map to model
-        JavaRDD<SensorDatum> sensorData = records.map(new Function<GenericRecord, SensorDatum>() {
-            public SensorDatum call(GenericRecord genericRecord) throws Exception {
-                return SensorDatum.fromGenericRecord(genericRecord);
-            }
-        });
-        long inputRecordsCount = sensorData.count();
-
-        // Filter out invalid messages
-        sensorData = sensorData.filter(validSensorData());
-        long validRecordsCount = sensorData.count();
-
-        // Filter out messages we won't use anyway
-        sensorData = sensorData.filter(usefulSensorData());
-        long usefulRecordsCount = sensorData.count();
-
+        // Map to pairs for aggregation
         JavaPairRDD<String, SensorDatum> pairs = sensorData.mapToPair(new PairFunction<SensorDatum, String, SensorDatum>() {
             public Tuple2<String, SensorDatum> call(SensorDatum sensorDatum) throws Exception {
                 return new Tuple2<>(sensorDatum.getIcao(), sensorDatum);
             }
         });
 
+        // For each partition, check if an aircraft is flying faster than MAX_VELOCITY or higher than MAX_ALTITUDE
+        // If that is the case, return null. If not, return the list of sensor data for that aircraft.
+        // The resulting lists are merged into one big list if none of the lists are null, otherwise null is returned.
+        // This is basically the same as a group by and then filtering on MAX_ALTITUDE and MAX_DISTANCE, but should be
+        // faster due to less shuffling.
         JavaPairRDD<String, List<SensorDatum>> sensorDataByAircraft = pairs.aggregateByKey(new ArrayList<SensorDatum>(), new Function2<List<SensorDatum>, SensorDatum, List<SensorDatum>>() {
             @Override
             public List<SensorDatum> call(List<SensorDatum> sensorData, SensorDatum sensorDatum) throws Exception {
@@ -125,8 +115,9 @@ public class Sampler extends JobBase {
                 return result;
             }
         });
-        long aircraftCount = sensorDataByAircraft.count();
 
+        // Filter out aircraft that have a null sensor data list, meaning that they're not helicopters. Also check whether
+        // it has any airborne position messages. If not, we cannot use it (likely some ground vehicle)
         JavaPairRDD<String, List<SensorDatum>> sensorDataByPotentialHelis = sensorDataByAircraft.filter(new Function<Tuple2<String, List<SensorDatum>>, Boolean>() {
             @Override
             public Boolean call(Tuple2<String, List<SensorDatum>> t) throws Exception {
@@ -141,10 +132,9 @@ public class Sampler extends JobBase {
                 return false;
             }
         });
-        long potentialHelicoptersCount = sensorDataByPotentialHelis.count();
 
         // Flatten
-        JavaRDD<SensorDatum> sample = flatten(sensorDataByPotentialHelis);
+        JavaRDD<SensorDatum> sample = flatten(sensorDataByPotentialHelis).cache();
         long outputRecordsCount = sample.count();
 
         // To CSV
@@ -152,11 +142,6 @@ public class Sampler extends JobBase {
 
         // Print statistics
         List<String> statistics = new ArrayList<>();
-        statistics.add(numberOfItemsStatistic("raw records             ", inputRecordsCount));
-        statistics.add(numberOfItemsStatistic("valid records           ", validRecordsCount));
-        statistics.add(numberOfItemsStatistic("useful records          ", usefulRecordsCount));
-        statistics.add(numberOfItemsStatistic("unique aircraft         ", aircraftCount));
-        statistics.add(numberOfItemsStatistic("potential helicopters   ", potentialHelicoptersCount));
         statistics.add(numberOfItemsStatistic("messages in final sample", outputRecordsCount));
         saveStatisticsAsTextFile(sc, outputPath, statistics);
     }

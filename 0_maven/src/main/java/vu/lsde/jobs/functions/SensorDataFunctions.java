@@ -63,6 +63,15 @@ public class SensorDataFunctions {
         };
     }
 
+    public static Function<SensorDatum, Boolean> identificationSensorData() {
+        return new Function<SensorDatum, Boolean>() {
+            @Override
+            public Boolean call(SensorDatum sensorDatum) throws Exception {
+                return sensorDatum.getDecodedMessage().getType() == ModeSReply.subtype.ADSB_IDENTIFICATION;
+            }
+        };
+    }
+
     public static Function<SensorDatum, Boolean> flightDataSensorData() {
         return new Function<SensorDatum, Boolean>() {
             public Boolean call(SensorDatum sd) {
@@ -94,7 +103,17 @@ public class SensorDataFunctions {
         };
     }
 
-    public static Function<Tuple2<String, Iterable<SensorDatum>>, Boolean> rotorcraftSensorData() {
+    public static Function<SensorDatum, Boolean> rotorcraftSensorData() {
+        return new Function<SensorDatum, Boolean>() {
+            @Override
+            public Boolean call(SensorDatum sensorDatum) throws Exception {
+                ModeSReply msg = sensorDatum.getDecodedMessage();
+                return msg instanceof IdentificationMsg && ((IdentificationMsg) msg).getCategoryDescription().equals("Rotorcraft");
+            }
+        };
+    }
+
+    public static Function<Tuple2<String, Iterable<SensorDatum>>, Boolean> rotorcraftSensorDataByAircraft() {
         return new Function<Tuple2<String, Iterable<SensorDatum>>, Boolean>() {
             public Boolean call(Tuple2<String, Iterable<SensorDatum>> tuple) throws Exception {
                 for (SensorDatum sd: tuple._2) {
