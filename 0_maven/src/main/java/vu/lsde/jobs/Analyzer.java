@@ -11,6 +11,7 @@ import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.api.java.function.VoidFunction;
+import org.apache.spark.broadcast.Broadcast;
 import org.opensky.libadsb.Position;
 import org.opensky.libadsb.msgs.*;
 import scala.Tuple2;
@@ -76,27 +77,25 @@ public class Analyzer extends JobBase {
         //
 
         // Get rotorcraft icaos
-        JavaPairRDD<String, String> rotorcraftIcaos = sensorData
+        List<String> rotorcraftIcaosList = sensorData
                 .filter(validSensorData())
                 .filter(identificationSensorData())
                 .filter(rotorcraftSensorData())
                 .map(JobBase.<SensorDatum>modelGetIcao())
                 .distinct()
-                .mapToPair(icaoToIcaoIcaoPair());
+                .collect();
 
-        JavaPairRDD<String, SensorDatum> icaoSensorDataPairs = toIcaoModelPairs(sensorData.filter(validSensorData()));
+        final Broadcast<HashSet<String>> rotorcraftIcaos = sc.broadcast(new HashSet<>(rotorcraftIcaosList));
 
         // Get sensor data for rotorcrafts
-        JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByRotorcraft = rotorcraftIcaos
-                .join(icaoSensorDataPairs)
-                .values()
-                .mapToPair(new PairFunction<Tuple2<String, SensorDatum>, String, SensorDatum>() {
+        JavaPairRDD<String, Iterable<SensorDatum>> sensorDataByRotorcraft = sensorData
+                .filter(new Function<SensorDatum, Boolean>() {
                     @Override
-                    public Tuple2<String, SensorDatum> call(Tuple2<String, SensorDatum> t) throws Exception {
-                        return t;
+                    public Boolean call(SensorDatum sensorDatum) throws Exception {
+                        return rotorcraftIcaos.getValue().contains(sensorDatum.getIcao());
                     }
                 })
-                .groupByKey();
+                .groupBy(JobBase.<SensorDatum>modelGetIcao());
 
         // Get flight data for rotorcrafts
         JavaPairRDD<String, Iterable<FlightDatum>> flightDataByRotorcraft = sensorDataByRotorcraft
