@@ -287,13 +287,4 @@ public class Analyzer extends JobBase {
             }
         };
     }
-
-    private static PairFunction<String, String, String> icaoToIcaoIcaoPair() {
-        return new PairFunction<String, String, String>() {
-            @Override
-            public Tuple2<String, String> call(String s) throws Exception {
-                return new Tuple2<>(s, s);
-            }
-        };
-    }
 }
