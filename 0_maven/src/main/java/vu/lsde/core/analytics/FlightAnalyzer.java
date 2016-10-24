@@ -10,6 +10,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
 
+import static vu.lsde.core.util.Util.addIfNotNull;
+import static vu.lsde.core.util.Util.angleDistance;
+import static vu.lsde.core.util.Util.avgAngle;
+
 public class FlightAnalyzer {
 
     public static boolean wasHovering(Flight flight) {
@@ -108,6 +112,58 @@ public class FlightAnalyzer {
                 if (highClimbingCount > 0) {
                     return true;
                 }
+            }
+        }
+        return false;
+    }
+
+    public static boolean crusingAtHelicopterSpeedAndAltitude(Flight flight) {
+        SortedMap<Long, List<FlightDatum>> flightDataWindows = Grouping.groupFlightDataByTimeWindow(flight.getFlightData(), 180);
+        for (List<FlightDatum> flightData : flightDataWindows.values()) {
+            List<Double> headings = new ArrayList<>();
+            for (FlightDatum fd : flightData) {
+                addIfNotNull(headings, fd.getHeading());
+            }
+            Double avgHeading = avgAngle(headings);
+
+            if (avgHeading == null) {
+                continue;
+            }
+
+            boolean cruising = false;
+            for (Double heading : headings) {
+                cruising = angleDistance(heading, avgHeading) > 5;
+                if (!cruising) {
+                    break;
+                }
+            }
+
+            if (!cruising) {
+                continue;
+            }
+
+            boolean likeHelicopter = false;
+            boolean hasAltitude = false;
+            boolean hasVelocity = false;
+            for (FlightDatum fd : flightData) {
+                if (fd.hasAltitude()) {
+                    hasAltitude = true;
+                    likeHelicopter = fd.getAltitude() > 950 && fd.getAltitude() < 1050;
+                    if (!likeHelicopter) {
+                        break;
+                    }
+                }
+                if (fd.hasVelocity()) {
+                    hasVelocity = true;
+                    likeHelicopter = fd.getVelocity() > 85 && fd.getVelocity() < 95;
+                    if (!likeHelicopter) {
+                        break;
+                    }
+                }
+            }
+
+            if (hasAltitude && hasVelocity && likeHelicopter) {
+                return true;
             }
         }
         return false;

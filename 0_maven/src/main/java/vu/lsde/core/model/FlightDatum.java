@@ -14,7 +14,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
-import static vu.lsde.core.util.Util.firstNonNull;
+import static vu.lsde.core.util.Util.*;
 
 public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
     private static final DateFormat DATE_TIME_FORMAT = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
@@ -271,37 +271,5 @@ public class FlightDatum extends ModelBase implements Comparable<FlightDatum> {
         return new FlightDatum(icao, timeSum / flightData.size(), lon, lat, avg(altitudes), avg(velocities), avgAngle(headings), avg(rateOfClimbs));
     }
 
-    private static void addIfNotNull(List list, Object value) {
-        if (value != null) {
-            list.add(value);
-        }
-    }
 
-    private static Double avg(List<Double> values) {
-        if (values.isEmpty())
-            return null;
-        if (values.size() == 1)
-            return values.get(0);
-
-        double sum = 0;
-        for (double value : values) {
-            sum += value;
-        }
-        return sum / values.size();
-    }
-
-    private static Double avgAngle(List<Double> values) {
-        if (values.isEmpty())
-            return null;
-        if (values.size() == 1)
-            return values.get(0);
-
-        double sumSin = 0;
-        double sumCos = 0;
-        for (double value : values) {
-            sumSin += Math.sin(value);
-            sumCos += Math.cos(value);
-        }
-        return Math.atan2(sumSin, sumCos);
-    }
 }

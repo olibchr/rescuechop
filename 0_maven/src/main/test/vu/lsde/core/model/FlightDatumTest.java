@@ -39,8 +39,8 @@ public class FlightDatumTest extends TestCase {
 
     public void testExtend() {
         // Prepare
-        FlightDatum base = new FlightDatum("icao", 1, 0.0, 0.0, null, null, null);
-        FlightDatum other = new FlightDatum("icao2", 2, 10.0, 10.0, 200.0, 100.0, 5.0);
+        FlightDatum base = new FlightDatum("icao", 1, 0.0, 0.0, null, null, null, null);
+        FlightDatum other = new FlightDatum("icao2", 2, 10.0, 10.0, 200.0, 100.0, 45.0, 5.0);
 
         // Act
         FlightDatum extended = base.extend(other);
@@ -51,12 +51,13 @@ public class FlightDatumTest extends TestCase {
         assertEquals(extended.getLatitude(), 0.0);
         assertEquals(extended.getAltitude(), 200.0);
         assertEquals(extended.getVelocity(), 100.0);
+        assertEquals(extended.getHeading(), 45.0);
         assertEquals(extended.getRateOfClimb(), 5.0);
     }
 
     public void testExtendProvideNull() {
         // Prepare
-        FlightDatum flightDatum = new FlightDatum("icao", 1, 0.0, 0.0, null, null, null);
+        FlightDatum flightDatum = new FlightDatum("icao", 1, 0.0, 0.0, null, null, null, null);
 
         // Act
         FlightDatum extended = flightDatum.extend(null);
@@ -67,9 +68,9 @@ public class FlightDatumTest extends TestCase {
 
     public void testMerge() {
         // Prepare
-        FlightDatum fd1 = new FlightDatum("icao1", 1d, 0.0, 0.0, 1d, 1d, 1d);
-        FlightDatum fd2 = new FlightDatum("icao1", 2d, 0.0, 0.0, 2d, 2d, 2d);
-        FlightDatum fd3 = new FlightDatum("icao2", 6d, null, null, null, null, null);
+        FlightDatum fd1 = new FlightDatum("icao1", 1d, 0.0, 0.0, 1d, 1d, 45.0, 1d);
+        FlightDatum fd2 = new FlightDatum("icao1", 2d, 0.0, 0.0, 2d, 2d, 55.0, 2d);
+        FlightDatum fd3 = new FlightDatum("icao2", 6d, null, null, null, null, null, null);
         List<FlightDatum> flightData = new ArrayList<>();
         flightData.add(fd1);
         flightData.add(fd2);
@@ -85,6 +86,7 @@ public class FlightDatumTest extends TestCase {
         assertEquals(0.0, merged.getLatitude());
         assertEquals(1.5, merged.getAltitude());
         assertEquals(1.5, merged.getVelocity());
+        assertEquals(50.0, merged.getHeading());
         assertEquals(1.5, merged.getRateOfClimb());
     }
 

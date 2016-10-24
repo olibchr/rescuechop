@@ -41,6 +41,15 @@ public class ClassifierFunctions {
                     return true;
                 }
                 for (Flight flight : t._2) {
+                    if (FlightAnalyzer.crusingAtHelicopterSpeedAndAltitude(flight)) {
+                        score++;
+                        break;
+                    }
+                }
+                if (score > 1) {
+                    return true;
+                }
+                for (Flight flight : t._2) {
                     if (FlightAnalyzer.landsOrAscendsFromPosition(flight, helipads.getValue())) {
                         score++;
                         break;
