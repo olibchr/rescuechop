@@ -6,7 +6,7 @@ import scala.Tuple2;
 import vu.lsde.core.model.SensorDatum;
 
 /**
- * Created by richa on 18/10/2016.
+ * Functions for RDDs that have something to do with SensorData
  */
 public class SensorDataFunctions {
     public static Function<SensorDatum, Boolean> validSensorData() {

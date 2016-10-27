@@ -26,7 +26,8 @@ import static vu.lsde.jobs.functions.FlightDataFunctions.*;
 import static vu.lsde.jobs.functions.SensorDataFunctions.*;
 
 /**
- * Reads sensor data in avro format and analyzes the kind of messages that are in there.
+ * Reads sensor data in avro format and analyzes it for message types, distribution of messages over time, sample of
+ * positions, altitudes and velocities of aircraft and the altitudes and velocities of helicopters.
  */
 public class Analyzer extends JobBase {
 

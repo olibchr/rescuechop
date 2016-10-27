@@ -14,6 +14,9 @@ import java.util.List;
 
 import static vu.lsde.jobs.functions.ClassifierFunctions.classifyHelicoperFlights;
 
+/**
+ * Spark job for the evaluation of the flight classifier.
+ */
 public class FlightClassificationEvaluator extends JobBase {
     public static void main(String[] args) {
         String inputPath = args[0];

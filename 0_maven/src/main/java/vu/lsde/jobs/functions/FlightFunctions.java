@@ -13,6 +13,9 @@ import vu.lsde.core.util.Grouping;
 
 import java.util.*;
 
+/**
+ * Functions for RDDs that have something to do with Flights.
+ */
 public class FlightFunctions {
     // Maximum of time between two flight data points in the same flight in seconds
     private static final double MAX_TIME_DELTA = 20 * 60;

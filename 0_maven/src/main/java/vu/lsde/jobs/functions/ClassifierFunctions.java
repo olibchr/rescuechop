@@ -10,6 +10,9 @@ import vu.lsde.core.model.Flight;
 
 import java.util.List;
 
+/**
+ * Functions that are used for identifying helicopters and rescue helicopters.
+ */
 public class ClassifierFunctions {
 
     public static Function<Tuple2<String, Iterable<Flight>>, Boolean> classifyHelicoperFlights(final Broadcast<List<Position>> helipads) {

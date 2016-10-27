@@ -17,6 +17,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.SortedMap;
 
+/**
+ * Functions for RDDs that have something to do with FlightData
+ */
 public class FlightDataFunctions {
 
     public static Function<FlightDatum, Boolean> positionFlightData() {
