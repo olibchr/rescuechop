@@ -15,6 +15,9 @@ import vu.lsde.core.reducer.SeriesReducer;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Post processes generated flights (in CSV format) for visualization purposes.
+ */
 public class FlightsPostProcessor extends JobBase {
 
     private static class Circle {

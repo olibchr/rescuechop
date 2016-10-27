@@ -23,8 +23,8 @@ import static vu.lsde.jobs.functions.SensorDataFunctions.validSensorData;
 
 /**
  * Takes a avro files containing sensor data as input, and then filters out any sensor data belonging to aircraft that
- * are definitely NOT rotorcraft. This is done by looking at speed and altitude. The remaining sensordata is then output
- * in the form of CSV.
+ * are definitely NOT rotorcraft. This is done by looking at speed, altitude and identification. The remaining sensor
+ * data is then output in the form of CSV.
  */
 public class Sampler extends JobBase {
 

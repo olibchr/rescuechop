@@ -25,7 +25,7 @@ import static vu.lsde.jobs.functions.SensorDataFunctions.flightDataSensorData;
 import static vu.lsde.jobs.functions.SensorDataFunctions.rotorcraftSensorDataByAircraft;
 
 /**
- * Maps sensor data to aircraft positions.
+ * Takes sensor data in CSV format as input, identifies (rescue) helicopters and outputs their flights.
  */
 public class HelicopterIdentifier extends JobBase {
 
