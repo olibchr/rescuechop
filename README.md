@@ -1,10 +1,9 @@
 # rescuechop
 
-P4: Rescue Choppers. Investigate the use and coverage of rescue and medical helicopters. Where are such helicopters located? Which areas are effectively covered by these helicopters, and which are not? Can you relate these areas to population density and maybe suggest shifts in coverage? How long does the average flight take and how much does this cost?
+Rescue Choppers. We investigate the use and coverage of rescue and medical helicopters from openskynet data. 
+Leading questions: 
+Where are such helicopters located? Which areas are effectively covered by these helicopters, and which are not?
 
-https://avro.apache.org/docs/current/gettingstartedjava.html
+https://drive.google.com/open?id=0BxYXzgY4FArfbW1yckZyZUYycWM
 
-
-http://sedac.ciesin.columbia.edu/data/set/gpw-v3-population-density-future-estimates/data-download
-
-https://blog.dominodatalab.com/creating-interactive-crime-maps-with-folium/
+http://event.cwi.nl/lsde/2016/results/group09/
